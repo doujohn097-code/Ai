@@ -4,16 +4,14 @@ Mobile-first dark chat UI for Derja Ai, backed by a Python serverless function.
 
 ## Deploy on Vercel
 
-1. Unzip and `cd` into this folder.
-2. Run `vercel` (or import the folder from the Vercel dashboard).
-3. In the Vercel dashboard → Project Settings → Environment Variables, add:
+1. Unzip and import the folder into Vercel (or push to a GitHub repo and import it).
+2. In Vercel dashboard → Project Settings → Environment Variables, add:
    - `AGENTROUTER_API_KEY` = your agentrouter.org API key
    - `AGENTROUTER_MODEL` = `opus-5` (or whichever model you want)
-4. Redeploy if needed.
+3. Deploy.
 
-The frontend is served from `public/`, the API endpoint is `/api/chat`.
+The frontend is in `public/`. The API endpoint `/api/chat` is handled by `api/main.py` via a rewrite in `vercel.json`.
 
 ## Notes
 
-- AgentRouter currently blocks server requests from some IPs with an Aliyun WAF/captcha page. If Vercel’s IP is blocked, try a different region or provider, or ask AgentRouter to whitelist the IP.
-- The frontend sends requests to `/api/chat` relative to the same domain.
+- AgentRouter may block some server IPs with an Aliyun WAF/captcha page. If Vercel’s IP is blocked, try another region/provider or ask AgentRouter to whitelist it.

@@ -1,7 +1,10 @@
 {
   "version": 2,
+  "rewrites": [
+    { "source": "/api/chat", "destination": "/api/main" }
+  ],
   "functions": {
-    "api/chat.py": {
+    "api/main.py": {
       "maxDuration": 30
     }
   }
