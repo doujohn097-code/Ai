@@ -46,16 +46,14 @@ class handler(BaseHTTPRequestHandler):
         data = {"model": model, "max_tokens": 1024, "messages": messages}
 
         try:
-            resp = httpx.post(
-                f"{base_url}{api_path}",
-                headers=headers,
-                json=data,
-                timeout=60,
-                http2=True,
-                follow_redirects=True,
-            )
-            text = resp.text
-            content_type = resp.headers.get("content-type", "")
+            with httpx.Client(http2=True, follow_redirects=True, timeout=60) as client:
+                resp = client.post(
+                    f"{base_url}{api_path}",
+                    headers=headers,
+                    json=data,
+                )
+                text = resp.text
+                content_type = resp.headers.get("content-type", "")
 
             if resp.status_code != 200 or "json" not in content_type.lower() or not text.lstrip().startswith(("{", "[")):
                 self._send(502, {
@@ -64,7 +62,7 @@ class handler(BaseHTTPRequestHandler):
                 })
                 return
 
-            self._send(200, resp.json())
+            self._send(200, json.loads(text))
         except Exception as e:
             self._send(500, {"error": str(e)})
 
