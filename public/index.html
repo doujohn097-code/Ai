@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Derja Ai</title>
   <link rel="icon" type="image/png" href="/static/logo.png" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -15,6 +17,7 @@
       --muted: #8e8e93;
       --blue: #1a7fd4;
       --blue-active: #1567ad;
+      --danger: #ff3b30;
     }
     html, body {
       height: 100%;
@@ -32,7 +35,8 @@
       .msg-user, .msg-assistant { max-width: 70%; font-size: 17px; }
       .msg-user { border-radius: 28px; padding: 14px 20px; min-width: 240px; }
       .brand { font-size: 20px; }
-      .logo { width: 36px; height: 36px; }
+      .logo { width: 48px; height: 48px; }
+      .assistant-avatar { width: 32px; height: 32px; }
     }
 
     /* Top bar */
@@ -73,10 +77,9 @@
       cursor: pointer;
     }
     .logo {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: #222;
+      width: 40px; height: 40px;
+      object-fit: contain;
+      background: transparent;
     }
     .brand {
       display: flex; align-items: center; gap: 8px;
@@ -122,7 +125,7 @@
       flex-direction: row-reverse;
     }
     .assistant-avatar {
-      width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #222;
+      width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; background: transparent;
     }
     .copy-btn {
       margin-top: 6px;
@@ -135,6 +138,143 @@
       padding: 4px;
     }
     .copy-btn svg { width: 18px; height: 18px; }
+
+    /* Markdown styles */
+    .text p { margin-bottom: .6em; }
+    .text p:last-child { margin-bottom: 0; }
+    .text strong { font-weight: 700; }
+    .text em { font-style: italic; }
+    .text code {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .95em;
+    }
+    .text pre {
+      position: relative;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: .6em 0;
+    }
+    .text pre code {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+      display: block;
+      font-size: .85em;
+      line-height: 1.5;
+    }
+    .text .code-copy {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--bubble);
+      border: none;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .text .code-copy:hover { color: var(--text); }
+    .text ul, .text ol { padding-right: 1.2em; margin: .6em 0; }
+    .text li { margin-bottom: .3em; }
+    .text a { color: var(--blue); text-decoration: none; }
+    .text a:hover { text-decoration: underline; }
+    .text blockquote {
+      border-right: 3px solid var(--blue);
+      padding-right: 10px;
+      margin: .6em 0;
+      color: var(--muted);
+    }
+    .text h1, .text h2, .text h3, .text h4 {
+      font-size: 1.1em;
+      font-weight: 700;
+      margin: .8em 0 .4em;
+    }
+    .text table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: .6em 0;
+    }
+    .text th, .text td {
+      border: 1px solid #333;
+      padding: 6px 10px;
+      text-align: right;
+    }
+    .text th { background: var(--surface); }
+
+    .msg-assistant {
+      animation: fadeIn .3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Downloadable file cards */
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .file-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 10px 14px;
+      direction: rtl;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .file-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+    .file-card .file-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .file-card .file-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: var(--bubble);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: var(--blue);
+    }
+    .file-card .file-name {
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-card .file-size {
+      font-size: 12px;
+      color: var(--muted);
+      direction: ltr;
+      display: inline-block;
+    }
+    .file-card .download-btn {
+      background: var(--blue);
+      border: none;
+      color: white;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .file-card .download-btn:hover { background: var(--blue-active); }
 
     /* Typing dots */
     .typing {
@@ -202,6 +342,63 @@
       flex-shrink: 0;
     }
 
+    .attachment-preview {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bubble);
+      border: 1px solid #333;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 13px;
+      color: var(--text);
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .attachment-name { overflow: hidden; text-overflow: ellipsis; direction: ltr; display: inline-block; }
+    .attachment-remove {
+      background: transparent; border: none; color: var(--muted);
+      font-size: 18px; cursor: pointer; line-height: 1;
+      padding: 0 2px;
+    }
+    .attachment-remove:hover { color: var(--danger); }
+
+    .user-attachment {
+      margin-top: 10px;
+      border-radius: 16px;
+      max-width: 260px;
+      max-height: 260px;
+      object-fit: cover;
+      display: block;
+      border: 1px solid #333;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .user-attachment:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+
+    .user-attachment-file {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bubble);
+      border: 1px solid #333;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: var(--text);
+      direction: ltr;
+    }
+    .user-attachment-file::before {
+      content: '';
+      width: 14px; height: 14px;
+      background: currentColor;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") no-repeat center;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") no-repeat center;
+      mask-size: contain;
+      -webkit-mask-size: contain;
+    }
+
     /* Sidebar */
     .overlay {
       position: fixed;
@@ -215,24 +412,55 @@
     .sidebar {
       position: fixed;
       top: 0; right: 0;
-      width: 260px; height: 100%;
+      width: 280px; height: 100%;
       background: #111;
       padding: 20px;
       transform: translateX(100%);
       transition: transform .25s ease;
       z-index: 31;
+      display: flex;
+      flex-direction: column;
     }
     .sidebar.open { transform: translateX(0); }
     .sidebar h3 { margin-bottom: 16px; font-size: 16px; color: var(--muted); }
+    .sidebar-list { flex: 1; overflow-y: auto; }
     .sidebar-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       padding: 12px;
       border-radius: 12px;
       margin-bottom: 8px;
       background: var(--surface);
       font-size: 14px;
       cursor: pointer;
+      direction: rtl;
     }
     .sidebar-item:hover { background: var(--bubble); }
+    .sidebar-item.active { background: var(--bubble); }
+    .sidebar-item .title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sidebar-item .delete {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .sidebar-item .delete:hover { color: var(--danger); background: rgba(255,59,48,0.1); }
+    .new-chat-item {
+      background: var(--blue);
+      color: white;
+    }
+    .new-chat-item:hover { background: var(--blue-active); }
 
     /* Toast */
     .toast {
@@ -252,6 +480,7 @@
 
     /* Scrollbar */
     .chat::-webkit-scrollbar { width: 0; }
+    .sidebar-list::-webkit-scrollbar { width: 0; }
   </style>
 </head>
 <body>
@@ -259,7 +488,6 @@
     <div class="topbar">
       <div class="group">
         <button class="pill-btn" id="menuBtn" title="محادثة جديدة">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
         </button>
       </div>
@@ -281,8 +509,8 @@
         <div class="assistant-row reverse">
           <img src="/static/logo.png" class="assistant-avatar" alt="Derja Ai" />
           <div>
-            <div class="text">مرحبًا! 👋 أنا Derja Ai. كيف يمكنني مساعدتك اليوم؟</div>
-            <button class="copy-btn" title="نسخ" data-text="مرحبًا! 👋 أنا Derja Ai. كيف يمكنني مساعدتك اليوم؟">
+            <div class="text">مرحبا بيك! أنا Derja Ai، كيف نقدر نساعدك اليوم؟</div>
+            <button class="copy-btn" title="نسخ" data-text="مرحبا بيك! أنا Derja Ai، كيف نقدر نساعدك اليوم؟">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
           </div>
@@ -294,19 +522,25 @@
       <button type="submit" class="send-btn" id="sendBtn" title="إرسال">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
-      <input type="text" class="chat-input" id="chatInput" placeholder="الرسالة إلى Derja Ai" autocomplete="off" />
+      <input type="text" class="chat-input" id="chatInput" placeholder="ابعث رسالة لـ Derja Ai" autocomplete="off" />
+      <div class="attachment-preview" id="attachmentPreview" style="display:none;">
+        <span class="attachment-name" id="attachmentName"></span>
+        <button type="button" class="attachment-remove" id="attachmentRemove">&times;</button>
+      </div>
       <button type="button" class="attach-btn" id="attachBtn" title="إرفاق">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
+      <input type="file" id="fileInput" style="display:none" />
     </form>
 
     <div class="overlay" id="overlay"></div>
     <div class="sidebar" id="sidebar">
-      <h3>المحادثات السابقة</h3>
-      <div class="sidebar-item">محادثة جديدة</div>
-      <div class="sidebar-item">اليوم</div>
-      <div class="sidebar-item">الأمس</div>
-      <div class="sidebar-item">الأسبوع الماضي</div>
+      <h3>المحادثات</h3>
+      <div class="sidebar-list" id="sidebarList">
+        <div class="sidebar-item new-chat-item" id="newChatItem">
+          <span class="title">+ محادثة جديدة</span>
+        </div>
+      </div>
     </div>
 
     <div class="toast" id="toast">تم النسخ</div>
@@ -322,30 +556,279 @@
     const historyBtn = document.getElementById('historyBtn');
     const overlay = document.getElementById('overlay');
     const sidebar = document.getElementById('sidebar');
+    const sidebarList = document.getElementById('sidebarList');
     const toast = document.getElementById('toast');
+    const fileInput = document.getElementById('fileInput');
+    const attachmentPreview = document.getElementById('attachmentPreview');
+    const attachmentName = document.getElementById('attachmentName');
+    const attachmentRemove = document.getElementById('attachmentRemove');
 
-    let messages = [{role:'assistant', content:'مرحبًا! 👋 أنا Derja Ai. كيف يمكنني مساعدتك اليوم؟'}];
+    const STORAGE_KEY = 'derja_ai_conversations';
+    const ACTIVE_KEY = 'derja_ai_active_id';
+    const GREETING = 'مرحبا بيك! أنا Derja Ai، كيف نقدر نساعدك اليوم؟';
 
-    function apiConfig() {
-      const url = new URL(window.location.href);
-      const base = `${url.protocol}//${url.host}`;
-      const headers = {};
-      if (url.username || url.password) {
-        const creds = `${url.username || ''}:${url.password || ''}`;
-        headers['Authorization'] = 'Basic ' + btoa(creds);
-      }
-      return { base, headers };
+    let conversations = [];
+    let activeId = null;
+    let pendingFile = null;
+
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     }
 
-    function addUser(text) {
+    function loadConversations() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        conversations = raw ? JSON.parse(raw) : [];
+        activeId = localStorage.getItem(ACTIVE_KEY);
+      } catch (e) {
+        conversations = [];
+        activeId = null;
+      }
+      if (!conversations.length) {
+        createConversation(false);
+      } else if (!conversations.find(c => c.id === activeId)) {
+        activeId = conversations[0].id;
+      }
+    }
+
+    function saveConversations() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+      localStorage.setItem(ACTIVE_KEY, activeId || '');
+    }
+
+    function createConversation(save = true) {
+      const id = generateId();
+      const conv = {
+        id,
+        title: 'محادثة جديدة',
+        messages: [{role:'assistant', content: GREETING}],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      conversations.unshift(conv);
+      activeId = id;
+      if (save) saveConversations();
+      return conv;
+    }
+
+    function getTitle(messages) {
+      const firstUser = messages.find(m => m.role === 'user');
+      if (firstUser) {
+        const text = textFromContent(firstUser.content).replace(/\s+/g, ' ').trim().slice(0, 40);
+        return text || 'محادثة';
+      }
+      return 'محادثة';
+    }
+
+    function updateTitleIfNeeded(conv) {
+      if (conv.title === 'محادثة جديدة' && conv.messages.some(m => m.role === 'user')) {
+        conv.title = getTitle(conv.messages);
+      }
+      conv.updatedAt = Date.now();
+    }
+
+    function deleteConversation(id) {
+      conversations = conversations.filter(c => c.id !== id);
+      if (activeId === id) {
+        activeId = conversations.length ? conversations[0].id : null;
+      }
+      if (!conversations.length) {
+        createConversation();
+      }
+      saveConversations();
+      renderSidebar();
+      renderChat();
+    }
+
+    function setActiveConversation(id) {
+      activeId = id;
+      saveConversations();
+      renderSidebar();
+      renderChat();
+      toggleSidebar(false);
+    }
+
+    function activeConv() {
+      return conversations.find(c => c.id === activeId);
+    }
+
+    function renderChat() {
+      const conv = activeConv();
+      chat.innerHTML = '';
+      if (!conv) return;
+      conv.messages.forEach(m => {
+        if (m.role === 'user') {
+          addUser(m.content);
+        } else {
+          addAssistantToDOM(m.content);
+        }
+      });
+      scrollBottom();
+    }
+
+    function renderSidebar() {
+      sidebarList.innerHTML = '';
+
+      const newItem = document.createElement('div');
+      newItem.id = 'newChatItem';
+      newItem.className = 'sidebar-item new-chat-item';
+      newItem.innerHTML = '<span class="title">+ محادثة جديدة</span>';
+      newItem.onclick = () => { createNewChat(); toggleSidebar(false); };
+      sidebarList.appendChild(newItem);
+
+      conversations.forEach(conv => {
+        const div = document.createElement('div');
+        div.className = 'sidebar-item' + (conv.id === activeId ? ' active' : '');
+        div.innerHTML = `
+          <span class="title">${escapeHtml(conv.title)}</span>
+          <button class="delete" title="حذف" data-id="${conv.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        `;
+        div.querySelector('.title').onclick = () => setActiveConversation(conv.id);
+        div.querySelector('.delete').onclick = (e) => { e.stopPropagation(); deleteConversation(conv.id); };
+        sidebarList.appendChild(div);
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function createNewChat() {
+      createConversation();
+      renderSidebar();
+      renderChat();
+      showToast('محادثة جديدة');
+    }
+
+    function addUser(messageContent) {
       const div = document.createElement('div');
       div.className = 'msg-user';
-      div.textContent = text;
+
+      function appendText(t) {
+        const span = document.createElement('span');
+        span.textContent = t;
+        div.appendChild(span);
+      }
+
+      if (typeof messageContent === 'string') {
+        appendText(messageContent);
+      } else if (Array.isArray(messageContent)) {
+        messageContent.forEach(part => {
+          if (part.type === 'text') appendText(part.text);
+          else if (part.type === 'image_url' && part.image_url && part.image_url.url) {
+            const img = document.createElement('img');
+            img.src = part.image_url.url;
+            img.className = 'user-attachment';
+            img.alt = 'صورة مرفقة';
+            img.title = 'انقر لفتح الصورة بالحجم الكامل';
+            img.onclick = () => window.open(img.src, '_blank');
+            div.appendChild(img);
+          }
+        });
+      }
+
       chat.appendChild(div);
       scrollBottom();
     }
 
-    function addAssistant(text) {
+    function formatMarkdown(text) {
+      try {
+        const raw = marked.parse(text, { headerIds: false, mangle: false });
+        return DOMPurify.sanitize(raw, {
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'pre', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+          ALLOWED_ATTR: ['href', 'target', 'class']
+        });
+      } catch (e) {
+        return escapeHtml(text).replace(/\n/g, '<br>');
+      }
+    }
+
+    function extractFiles(text) {
+      const files = [];
+      const regex = /\[\[FILE:([^\]]+)\]\]([\s\S]*?)\[\[\/FILE\]\]/g;
+      let cleanText = text;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const name = match[1].trim();
+        let content = match[2];
+        // strip leading newline after marker
+        if (content.startsWith('\n')) content = content.slice(1);
+        if (content.endsWith('\n')) content = content.slice(0, -1);
+        files.push({ name, content, url: null });
+        cleanText = cleanText.replace(match[0], '');
+      }
+      cleanText = cleanText.replace(/\n{3,}/g, '\n\n').trim();
+      return { cleanText, files };
+    }
+
+    function fileIconHTML(filename) {
+      const ext = (filename.split('.').pop() || '').toLowerCase();
+      const categories = {
+        doc: ['pdf','doc','docx','odt','rtf','tex','epub'],
+        txt: ['txt','md','log'],
+        html: ['html','htm','xhtml'],
+        css: ['css','scss','sass','less'],
+        code: ['js','jsx','ts','tsx','json','py','java','cpp','c','h','hpp','cs','php','go','rs','swift','kt','rb','pl','sh','bash','zsh','ps1','sql','xml','yaml','yml','toml'],
+        sheet: ['csv','xls','xlsx','ods'],
+        slide: ['ppt','pptx','odp','key'],
+        archive: ['zip','rar','7z','tar','gz','bz2','xz'],
+        image: ['png','jpg','jpeg','gif','svg','webp','bmp','ico','tiff','psd','ai','sketch','fig'],
+        audio: ['mp3','wav','ogg','flac','aac','m4a','wma'],
+        video: ['mp4','mov','avi','mkv','webm','flv','wmv','m4v'],
+        exe: ['exe','msi','dmg','app','apk','ipa','deb','rpm','bat','cmd','com']
+      };
+      let cat = 'doc';
+      for (const [key, arr] of Object.entries(categories)) {
+        if (arr.includes(ext)) { cat = key; break; }
+      }
+      const colors = {
+        doc: '#ff9f43', txt: '#b2bec3', html: '#e17055', css: '#0984e3', code: '#74b9ff',
+        sheet: '#00b894', slide: '#e84393', archive: '#fdcb6e', image: '#a29bfe',
+        audio: '#fd79a8', video: '#d63031', exe: '#636e72'
+      };
+      const c = colors[cat];
+      const svgs = {
+        doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+        txt: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>',
+        html: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13 4-2-4-2"/><path d="M14 17h-4"/>',
+        css: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m8 13 4 2-4 2"/><path d="M16 13h-2"/>',
+        code: '<path d="M8 9l-3 3 3 3"/><path d="M16 15l3-3-3-3"/><line x1="10" y1="7" x2="14" y2="17"/>',
+        sheet: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="8" y2="13"/><line x1="12" y1="13" x2="12" y2="13"/><line x1="16" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="8" y2="17"/><line x1="12" y1="17" x2="12" y2="17"/><line x1="16" y1="17" x2="16" y2="17"/>',
+        slide: '<rect x="3" y="4" width="18" height="12" rx="2"/><line x1="3" y1="14" x2="21" y2="14"/>',
+        archive: '<path d="M21 8v13H3V8"/><path d="M1 4h22v4H1z"/><path d="M10 12h4"/>',
+        image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+        audio: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+        video: '<rect x="2" y="2" width="20" height="14" rx="2.18" ry="2.18"/><line x1="8" y1="8" x2="8" y2="8"/><line x1="16" y1="11" x2="23" y2="11"/>',
+        exe: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'
+      };
+      // simpler generic fallback
+      const svg = svgs[cat] || svgs.doc;
+      return `<div class="file-icon" style="color:${c}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></div>`;
+    }
+
+    function humanSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function downloadFile(name, content) {
+      const blob = new Blob([content], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function addAssistantToDOM(text) {
       const wrapper = document.createElement('div');
       wrapper.className = 'msg-assistant';
 
@@ -359,22 +842,68 @@
 
       const content = document.createElement('div');
 
+      const { cleanText, files } = extractFiles(text);
+
       const textDiv = document.createElement('div');
       textDiv.className = 'text';
-      textDiv.textContent = text;
+      textDiv.innerHTML = formatMarkdown(cleanText || (files.length ? 'ها هي الملفات اللي طلبتهم:' : ''));
 
       const copy = document.createElement('button');
       copy.className = 'copy-btn';
       copy.title = 'نسخ';
       copy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-      copy.onclick = () => doCopy(text);
+      copy.onclick = () => doCopy(cleanText || (files.length ? 'ها هي الملفات اللي طلبتهم:' : text));
 
       content.appendChild(textDiv);
       content.appendChild(copy);
       row.appendChild(avatar);
       row.appendChild(content);
       wrapper.appendChild(row);
+
+      if (files.length) {
+        const fileList = document.createElement('div');
+        fileList.className = 'file-list';
+
+        files.forEach(file => {
+          const blob = new Blob([file.content]);
+          const size = humanSize(blob.size);
+
+          const card = document.createElement('div');
+          card.className = 'file-card';
+          card.innerHTML = `
+            <div class="file-info">
+              ${fileIconHTML(file.name)}
+              <div style="min-width:0;">
+                <div class="file-name">${escapeHtml(file.name)}</div>
+                <div class="file-size">${size}</div>
+              </div>
+            </div>
+            <button class="download-btn">تحميل</button>
+          `;
+          card.querySelector('.download-btn').onclick = () => downloadFile(file.name, file.content);
+          fileList.appendChild(card);
+        });
+
+        content.appendChild(fileList);
+      }
+
       chat.appendChild(wrapper);
+
+      // code copy buttons and remove empty code blocks
+      textDiv.querySelectorAll('pre').forEach(pre => {
+        if (!pre.textContent.trim()) {
+          pre.remove();
+          return;
+        }
+        const code = pre.querySelector('code');
+        const codeText = code ? code.textContent : pre.textContent;
+        const btn = document.createElement('button');
+        btn.className = 'code-copy';
+        btn.textContent = 'نسخ';
+        btn.onclick = () => doCopy(codeText);
+        pre.appendChild(btn);
+      });
+
       scrollBottom();
     }
 
@@ -428,42 +957,161 @@
       sendBtn.disabled = loading;
     }
 
+    function apiConfig() {
+      const url = new URL(window.location.href);
+      const base = `${url.protocol}//${url.host}`;
+      const headers = {};
+      if (url.username || url.password) {
+        const creds = `${url.username || ''}:${url.password || ''}`;
+        headers['Authorization'] = 'Basic ' + btoa(creds);
+      }
+      return { base, headers };
+    }
+
+    function textFromContent(content) {
+      if (typeof content === 'string') return content;
+      if (Array.isArray(content)) {
+        return content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+      }
+      return '';
+    }
+
+    function isCreatorQuestion(content) {
+      const text = textFromContent(content).toLowerCase();
+      const keywords = [
+        'من صنعك', 'من أنت', 'من انت', 'من برمجك', 'من صممك', 'من مبرمجك', 'من مطورك',
+        'من أبدعك', 'من ابدعك', 'من صانعك', 'من انشأك', 'من أنشأك', 'من خلاك',
+        'مبتكر', 'مصمم', 'مطور', 'صانع', 'creator', 'maker', 'developer', 'inventor',
+        'who made you', 'who created you', 'who built you', 'who is your creator'
+      ];
+      return keywords.some(k => text.includes(k.toLowerCase()));
+    }
+
+    function creatorResponse() {
+      return 'أنا Derja Ai، صاوني سالم أحمد! 🙌 والله راجل ماهر في البرمجة وذكي بزاف، وهو اللي خلاني نقدر نساعدك ونجاوبك بكل احترافية. تحيا سالم أحمد! 😎';
+    }
+
+    function addMessageToActive(role, content) {
+      const conv = activeConv();
+      if (!conv) return;
+      conv.messages.push({role, content});
+      updateTitleIfNeeded(conv);
+      saveConversations();
+      renderSidebar();
+    }
+
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
+    function clearPendingFile() {
+      pendingFile = null;
+      attachmentPreview.style.display = 'none';
+      fileInput.value = '';
+    }
+
+    async function processPendingFile(userText) {
+      if (!pendingFile) return userText;
+      const file = pendingFile;
+      const isImage = file.type.startsWith('image/');
+      const promptText = userText || 'اشرحلي الملف هذا';
+
+      if (isImage) {
+        const base64 = await readFileAsDataURL(file);
+        return [
+          { type: 'text', text: promptText },
+          { type: 'image_url', image_url: { url: base64 } }
+        ];
+      }
+
+      const isText = ['text/','application/json','application/javascript','application/xml','application/x-sh'].some(t => file.type.startsWith(t)) || ['txt','md','csv','json','js','html','htm','css','py','xml','yaml','yml','sql','log'].includes((file.name.split('.').pop() || '').toLowerCase());
+      let fileContent = '';
+      if (isText) {
+        try { fileContent = await readFileAsText(file); } catch (e) {}
+      }
+
+      return promptText + '\n\n[ملف مرفق: ' + file.name + ']' + (fileContent ? '\n' + fileContent : '\n(هذا الملف غير نصي وما نقدرش نقراه)') + '\n\nاشرحلي واش يحتوي أو شنو ندير بيه.';
+    }
+
     async function sendMessage(text) {
-      messages.push({role:'user', content: text});
+      const conv = activeConv();
+      if (!conv) return;
+
+      const content = pendingFile ? await processPendingFile(text) : text;
+
+      addUser(content);
+      addMessageToActive('user', content);
+      chatInput.value = '';
+      clearPendingFile();
+
+      if (isCreatorQuestion(content)) {
+        const reply = creatorResponse();
+        setLoading(true);
+        await new Promise(r => setTimeout(r, 600));
+        addAssistantToDOM(reply);
+        addMessageToActive('assistant', reply);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      showTyping();
+
       try {
         const cfg = apiConfig();
         const res = await fetch(`${cfg.base}/api/chat`, {
           method: 'POST',
           headers: {...cfg.headers, 'Content-Type':'application/json'},
-          body: JSON.stringify({messages})
+          body: JSON.stringify({messages: conv.messages})
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.error) {
           throw new Error(data.detail || data.error || 'فشل الاتصال بالـ API');
         }
-        const reply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'لم أفهم تمامًا، هل يمكنك التوضيح؟';
-        messages.push({role:'assistant', content: reply});
-        addAssistant(reply);
+        const reply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'ما فهمتش، واش تقدر توضّحلي؟';
+        addAssistantToDOM(reply);
+        addMessageToActive('assistant', reply);
       } catch (err) {
-        addAssistant('خطأ: ' + err.message);
+        addAssistantToDOM('خطأ: ' + err.message);
+      } finally {
+        removeTyping();
+        setLoading(false);
       }
     }
 
-    inputForm.addEventListener('submit', async (e) => {
+    inputForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = chatInput.value.trim();
-      if (!text) return;
-      addUser(text);
-      chatInput.value = '';
-      setLoading(true);
-      showTyping();
-      await sendMessage(text);
-      removeTyping();
-      setLoading(false);
+      if (!text && !pendingFile) return;
+      sendMessage(text);
     });
 
     attachBtn.addEventListener('click', () => {
-      showToast('سيتم دعم رفع الملفات لاحقًا');
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      pendingFile = file;
+      attachmentName.textContent = file.name;
+      attachmentPreview.style.display = 'flex';
+    });
+
+    attachmentRemove.addEventListener('click', () => {
+      clearPendingFile();
     });
 
     function toggleSidebar(show) {
@@ -473,18 +1121,12 @@
 
     historyBtn.addEventListener('click', () => toggleSidebar(true));
     overlay.addEventListener('click', () => toggleSidebar(false));
+    menuBtn.addEventListener('click', createNewChat);
 
-    menuBtn.addEventListener('click', () => {
-      chat.innerHTML = '';
-      messages = [];
-      addAssistant('مرحبًا! 👋 أنا Derja Ai. كيف يمكنني مساعدتك اليوم؟');
-      messages.push({role:'assistant', content:'مرحبًا! 👋 أنا Derja Ai. كيف يمكنني مساعدتك اليوم؟'});
-      showToast('محادثة جديدة');
-    });
-
-    document.querySelectorAll('.copy-btn').forEach(btn => {
-      btn.addEventListener('click', () => doCopy(btn.dataset.text));
-    });
+    // init
+    loadConversations();
+    renderSidebar();
+    renderChat();
   </script>
 </body>
 </html>
