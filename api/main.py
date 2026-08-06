@@ -23,24 +23,24 @@ class handler(BaseHTTPRequestHandler):
             return
 
         messages = payload.get("messages", [])
-        api_key = os.environ.get("AGENTROUTER_API_KEY", "")
-        model = os.environ.get("AGENTROUTER_MODEL", "opus-5")
-        base_url = os.environ.get("AGENTROUTER_BASE_URL", "https://agentrouter.org")
-        api_path = os.environ.get("AGENTROUTER_API_PATH", "/v1/messages")
+
+        api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("AGENTROUTER_API_KEY", "")
+        model = os.environ.get("OPENROUTER_MODEL") or os.environ.get("AGENTROUTER_MODEL", "anthropic/claude-opus-5")
+        base_url = os.environ.get("OPENROUTER_BASE_URL") or os.environ.get("AGENTROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+        api_path = os.environ.get("OPENROUTER_API_PATH") or os.environ.get("AGENTROUTER_API_PATH", "/chat/completions")
+        site_url = os.environ.get("SITE_URL", "https://derja-ai.vercel.app")
+        site_title = os.environ.get("SITE_TITLE", "Derja Ai")
 
         if not api_key:
-            self._send(500, {"error": "مفتاح API غير مضبوط (AGENTROUTER_API_KEY)"})
+            self._send(500, {"error": "مفتاح API غير مضبوط (OPENROUTER_API_KEY)"})
             return
 
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "claude-cli/2.1.158 (external, sdk-cli)",
-            "anthropic-version": "2023-06-01",
-            "anthropic-beta": "claude-code-20250219,interleaved-thinking-2025-05-14,effort-2025-11-24,redact-thinking-2026-02-12",
-            "anthropic-dangerous-direct-browser-access": "true",
-            "x-app": "cli",
+            "HTTP-Referer": site_url,
+            "X-Title": site_title,
         }
 
         data = {"model": model, "max_tokens": 1024, "messages": messages}
@@ -57,8 +57,8 @@ class handler(BaseHTTPRequestHandler):
 
             if resp.status_code != 200 or "json" not in content_type.lower() or not text.lstrip().startswith(("{", "[")):
                 self._send(502, {
-                    "error": text[:500] if text else "تعذر الوصول إلى AgentRouter",
-                    "detail": "AgentRouter returned a non-JSON response (likely WAF/captcha block)",
+                    "error": text[:500] if text else "تعذر الوصول إلى مزود الذكاء الاصطناعي",
+                    "detail": "المزود أرجع رداً غير JSON",
                 })
                 return
 
