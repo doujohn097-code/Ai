@@ -25,7 +25,7 @@ class handler(BaseHTTPRequestHandler):
         messages = payload.get("messages", [])
 
         api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("AGENTROUTER_API_KEY", "")
-        model = os.environ.get("OPENROUTER_MODEL") or os.environ.get("AGENTROUTER_MODEL", "anthropic/claude-opus-5")
+        model = os.environ.get("OPENROUTER_MODEL") or os.environ.get("AGENTROUTER_MODEL", "openai/gpt-4o-mini")
         base_url = os.environ.get("OPENROUTER_BASE_URL") or os.environ.get("AGENTROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         api_path = os.environ.get("OPENROUTER_API_PATH") or os.environ.get("AGENTROUTER_API_PATH", "/chat/completions")
         site_url = os.environ.get("SITE_URL", "https://derja-ai.vercel.app")
@@ -63,9 +63,10 @@ class handler(BaseHTTPRequestHandler):
                 content_type = resp.headers.get("content-type", "")
 
             if resp.status_code != 200 or "json" not in content_type.lower() or not text.lstrip().startswith(("{", "[")):
+                provider_err = text[:800] if text else "تعذر الوصول إلى مزود الذكاء الاصطناعي"
                 self._send(502, {
-                    "error": text[:500] if text else "تعذر الوصول إلى مزود الذكاء الاصطناعي",
-                    "detail": "المزود أرجع رداً غير JSON",
+                    "error": provider_err,
+                    "detail": provider_err,
                 })
                 return
 
