@@ -216,27 +216,26 @@
     .text th { background: var(--surface); }
 
     .msg-assistant {
-      animation: fadeIn .3s ease;
+      animation: fadeIn .6s ease;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .text.reveal > * {
       opacity: 0;
-      transform: translateY(8px);
-      animation: revealLine .55s cubic-bezier(.25,.46,.45,.94) forwards;
+      animation: revealLine .8s ease forwards;
     }
     .text.reveal > pre,
     .text.reveal > table,
     .text.reveal > ul,
     .text.reveal > ol {
-      animation-duration: .45s;
+      animation-duration: .6s;
     }
     @keyframes revealLine {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     /* Downloadable file cards */
@@ -795,7 +794,7 @@
       textDiv.classList.add('reveal');
       const children = Array.from(textDiv.children);
       children.forEach((child, i) => {
-        child.style.animationDelay = (i * 0.28) + 's';
+        child.style.animationDelay = (i * 0.35) + 's';
       });
     }
 
