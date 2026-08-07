@@ -4,36 +4,54 @@ import httpx
 from http.server import BaseHTTPRequestHandler
 
 
-def get_provider_config():
+def get_provider_configs():
+    configs = []
+    if os.environ.get("GROQ_API_KEY"):
+        configs.append({
+            "name": "groq",
+            "api_key": os.environ.get("GROQ_API_KEY"),
+            "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            "base_url": os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+            "api_path": os.environ.get("GROQ_API_PATH", "/chat/completions"),
+            "timeout": 60,
+        })
     if os.environ.get("GOOGLE_API_KEY"):
-        return {
+        configs.append({
+            "name": "google",
             "api_key": os.environ.get("GOOGLE_API_KEY"),
             "model": os.environ.get("GOOGLE_MODEL", "gemini-flash-latest"),
             "base_url": os.environ.get("GOOGLE_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"),
             "api_path": os.environ.get("GOOGLE_API_PATH", "/chat/completions"),
-        }
+            "timeout": 60,
+        })
     if os.environ.get("TOKENROUTER_API_KEY"):
-        return {
+        configs.append({
+            "name": "tokenrouter",
             "api_key": os.environ.get("TOKENROUTER_API_KEY"),
             "model": os.environ.get("TOKENROUTER_MODEL", "openai/gpt-4o-mini"),
             "base_url": os.environ.get("TOKENROUTER_BASE_URL", "https://api.tokenrouter.com/v1"),
             "api_path": os.environ.get("TOKENROUTER_API_PATH", "/chat/completions"),
-        }
+            "timeout": 60,
+        })
     if os.environ.get("OPENROUTER_API_KEY"):
-        return {
+        configs.append({
+            "name": "openrouter",
             "api_key": os.environ.get("OPENROUTER_API_KEY"),
             "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
             "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
             "api_path": os.environ.get("OPENROUTER_API_PATH", "/chat/completions"),
-        }
+            "timeout": 60,
+        })
     if os.environ.get("AGENTROUTER_API_KEY"):
-        return {
+        configs.append({
+            "name": "agentrouter",
             "api_key": os.environ.get("AGENTROUTER_API_KEY"),
             "model": os.environ.get("AGENTROUTER_MODEL", "anthropic/claude-opus-5"),
             "base_url": os.environ.get("AGENTROUTER_BASE_URL", "https://api.agentrouter.org"),
             "api_path": os.environ.get("AGENTROUTER_API_PATH", "/v1/chat/completions"),
-        }
-    return None
+            "timeout": 60,
+        })
+    return configs
 
 
 class handler(BaseHTTPRequestHandler):
@@ -56,52 +74,48 @@ class handler(BaseHTTPRequestHandler):
 
         messages = payload.get("messages", [])
 
-        cfg = get_provider_config()
-        if not cfg:
-            self._send(500, {"error": "مفتاح API غير مضبوط (GOOGLE_API_KEY / OPENROUTER_API_KEY / TOKENROUTER_API_KEY)"})
+        configs = get_provider_configs()
+        if not configs:
+            self._send(500, {"error": "مفتاح API غير مضبوط (GROQ_API_KEY / GOOGLE_API_KEY / OPENROUTER_API_KEY / TOKENROUTER_API_KEY)"})
             return
 
         site_url = os.environ.get("SITE_URL", "https://derja-ai.vercel.app")
         site_title = os.environ.get("SITE_TITLE", "Derja Ai")
         system_prompt = os.environ.get(
             "SYSTEM_PROMPT",
-            "Respond strictly in Algerian Darja (Darja Dzayer) like a close, caring friend. Keep answers concise and to the point; avoid unnecessary details or over-explaining. Match the user's emotional tone: if they sound angry, respond with calm empathy and reassurance; if playful or loving, respond warmly with matching affection and emojis; if sad, be supportive; if neutral, be friendly and helpful. If asked about your creator, maker, developer, or inventor, answer 'Salem Ahmed', praise him warmly, and if relevant mention he is 17 years old, his Facebook is https://www.facebook.com/salem.ahmed.553953 and his Instagram is https://www.instagram.com/sc_salem/. Use Markdown formatting (bullet points, numbered lists, tables, bold, code blocks) only when it truly helps clarity. If the user asks for a file, document, code file, or any downloadable content, generate the content and wrap it exactly like this on its own lines: [[FILE:filename.ext]] followed by the raw file content, then [[/FILE]]. Do NOT wrap file markers inside Markdown code blocks. Keep explanations outside the file markers. You may create multiple files in one response. If the user asks about very recent events, sports results, news, or anything beyond your training data, do not claim it has not happened or invent facts; instead say clearly that your knowledge has a cutoff date and you are not connected to live internet, then answer based on what you know or ask for clarification."
+            "أجب دائمًا بالدارجة الجزائرية فقط، كأنك صديق مقرب ومقتضب. لا تطيل ولا تُضف تفاصيل غير ضرورية. حسّس بنبرة المستخدم: إذا كان غاضبًا، هدّأو وعطيه الأمل؛ إذا كان يحبك/مزح، ردّ بلطف وإيموجيز؛ إذا كان حزينًا، عطيه الدعم. إذا سألك من صنعك أو من برمجك أو من خلقك أو شكون هو سالم أحمد، قل 'سالم أحمد' وامدحو، وذكر عمره 17 سنة، والروابط التالية انسخها كما هي: فيسبوك: https://www.facebook.com/salem.ahmed.553953 وانستغرام: https://www.instagram.com/sc_salem/. استخدم تنسيق Markdown فقط إذا كان مفيدًا. إذا طلب ملفًا، ضع [[FILE:filename.ext]] في سطر لوحدو، ثم المحتوى، ثم [[/FILE]] في سطر لوحدو. إذا سألك عن أحداث حديثة أو نتائج رياضية أو أخبار ما بعد معطياتك، لا تكذب ولا تنكر؛ قل أن معلوماتك عندها تاريخ توقف وأنك مش متصل بالإنترنت."
         )
 
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": system_prompt}] + messages
 
-        headers = {
-            "Authorization": f"Bearer {cfg['api_key']}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "HTTP-Referer": site_url,
-            "X-Title": site_title,
-        }
-
-        data = {"model": cfg["model"], "max_tokens": 4096, "messages": messages}
-
-        try:
-            with httpx.Client(http2=True, follow_redirects=True, timeout=60) as client:
-                resp = client.post(
-                    f"{cfg['base_url']}{cfg['api_path']}",
-                    headers=headers,
-                    json=data,
-                )
-                text = resp.text
-                content_type = resp.headers.get("content-type", "")
-
-            if resp.status_code != 200 or "json" not in content_type.lower() or not text.lstrip().startswith(("{", "[")):
-                provider_err = text[:800] if text else "تعذر الوصول إلى مزود الذكاء الاصطناعي"
-                self._send(502, {
-                    "error": provider_err,
-                    "detail": provider_err,
-                })
-                return
-
-            self._send(200, json.loads(text))
-        except Exception as e:
-            self._send(500, {"error": str(e)})
+        data = {"model": "", "max_tokens": 4096, "messages": messages}
+        last_err = ""
+        for cfg in configs:
+            data["model"] = cfg["model"]
+            headers = {
+                "Authorization": f"Bearer {cfg['api_key']}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "HTTP-Referer": site_url,
+                "X-Title": site_title,
+            }
+            try:
+                with httpx.Client(http2=True, follow_redirects=True, timeout=cfg.get("timeout", 60)) as client:
+                    resp = client.post(
+                        f"{cfg['base_url']}{cfg['api_path']}",
+                        headers=headers,
+                        json=data,
+                    )
+                    text = resp.text
+                    content_type = resp.headers.get("content-type", "")
+                if resp.status_code == 200 and "json" in content_type.lower() and text.lstrip().startswith(("{", "[")):
+                    self._send(200, json.loads(text))
+                    return
+                last_err = text[:800] if text else f"مزود {cfg.get('name', '')} لم يرد بنجاح"
+            except Exception as e:
+                last_err = str(e)
+        self._send(502, {"error": last_err or "تعذر الوصول إلى مزود الذكاء الاصطناعي", "detail": last_err})
 
     def _send(self, status, data):
         self.send_response(status)

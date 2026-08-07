@@ -106,6 +106,9 @@
       max-width: 85%;
       font-size: 16px;
       line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      min-width: 0;
     }
     .msg-user {
       align-self: flex-start;
@@ -124,13 +127,18 @@
     .msg-assistant .text {
       direction: rtl;
       white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
+    .text a { word-break: break-all; direction: ltr; display: inline-block; }
+    .url-link { color: #8ab4f8; text-decoration: underline; direction: ltr; display: inline-block; unicode-bidi: embed; }
     .assistant-row {
       display: flex; align-items: flex-end; gap: 8px;
     }
     .assistant-row.reverse {
       flex-direction: row-reverse;
     }
+    .assistant-row > div { min-width: 0; flex: 1; }
     .assistant-avatar {
       width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; background: transparent;
     }
@@ -697,9 +705,17 @@
       scrollBottom();
     }
 
+    function linkifyRawUrls(text) {
+      return text.replace(/(https?:\/\/[^\s<>]+)/g, url => {
+        const clean = url.replace(/[.,;:!?)}\]>]+$/, '');
+        const suffix = url.slice(clean.length);
+        return `<a href="${clean}" class="url-link" target="_blank">${clean}</a>${suffix}`;
+      });
+    }
     function formatMarkdown(text) {
       try {
-        const raw = marked.parse(text, { headerIds: false, mangle: false });
+        const safe = linkifyRawUrls(text);
+        const raw = marked.parse(safe, { headerIds: false, mangle: false });
         return DOMPurify.sanitize(raw, {
           ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'pre', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
           ALLOWED_ATTR: ['href', 'target', 'class']
