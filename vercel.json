@@ -1,7 +1,8 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/chat", "destination": "/api/main" }
+    { "source": "/api/chat", "destination": "/api/main" },
+    { "source": "/api/admin/:path*", "destination": "/api/main" }
   ],
   "functions": {
     "api/main.py": {
