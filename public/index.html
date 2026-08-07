@@ -130,7 +130,7 @@
       word-break: break-word;
       overflow-wrap: break-word;
     }
-    .text a { word-break: break-all; direction: ltr; display: inline-block; }
+    .text a { word-break: break-all; color: #8ab4f8; text-decoration: underline; }
     .url-link { color: #8ab4f8; text-decoration: underline; direction: ltr; display: inline-block; unicode-bidi: embed; }
     .assistant-row {
       display: flex; align-items: flex-end; gap: 8px;
@@ -198,7 +198,7 @@
     .text .code-copy:hover { color: var(--text); }
     .text ul, .text ol { padding-right: 1.2em; margin: .6em 0; }
     .text li { margin-bottom: .3em; }
-    .text a { color: var(--blue); text-decoration: none; }
+    .text a { color: var(--blue); text-decoration: none; word-break: break-all; }
     .text a:hover { text-decoration: underline; }
     .text blockquote {
       border-right: 3px solid var(--blue);
@@ -706,11 +706,22 @@
     }
 
     function linkifyRawUrls(text) {
-      return text.replace(/(https?:\/\/[^\s<>]+)/g, url => {
-        const clean = url.replace(/[.,;:!?)}\]>]+$/, '');
+      const mdLinks = [];
+      const noMd = text.replace(/\[([^\]]*)\]\(([^)]+)\)/g, (m, label, url) => {
+        const key = `__MDLINK${mdLinks.length}__`;
+        mdLinks.push({ key, text: `[${label}](${url})` });
+        return key;
+      });
+      const linked = noMd.replace(/(https?:\/\/[^\s<>]+)/g, url => {
+        const clean = url.replace(/[.,;:!?)}\]\>]+$/, '');
         const suffix = url.slice(clean.length);
         return `<a href="${clean}" class="url-link" target="_blank">${clean}</a>${suffix}`;
       });
+      let final = linked;
+      mdLinks.forEach(({ key, text }) => {
+        final = final.replace(key, text);
+      });
+      return final;
     }
     function formatMarkdown(text) {
       try {
