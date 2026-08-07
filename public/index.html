@@ -26,12 +26,12 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       overflow: hidden;
     }
-    .app { position: relative; height: 100vh; display: flex; flex-direction: column; }
+    .app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 
     @media (min-width: 900px) {
-      .chat { max-width: 960px; margin: 0 auto; padding: 84px 32px 120px; }
-      .topbar { max-width: 960px; margin: 0 auto; left: 0; right: 0; padding: 0 32px; }
-      .inputbar { max-width: 960px; margin: 0 auto; left: 0; right: 0; bottom: 24px; }
+      .chat { max-width: 960px; margin: 0 auto; padding: 24px 32px; }
+      .topbar { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+      .inputbar { max-width: 960px; margin: 0 auto 24px; }
       .msg-user, .msg-assistant { max-width: 70%; font-size: 17px; }
       .msg-user { border-radius: 28px; padding: 14px 20px; min-width: 240px; }
       .brand { font-size: 20px; }
@@ -41,8 +41,7 @@
 
     /* Top bar */
     .topbar {
-      position: absolute;
-      top: 0; left: 0; right: 0;
+      flex-shrink: 0;
       height: 64px;
       padding: 0 16px;
       display: flex;
@@ -90,7 +89,7 @@
     .chat {
       flex: 1;
       overflow-y: auto;
-      padding: 76px 16px 100px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -216,6 +215,22 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    .text.reveal > * {
+      opacity: 0;
+      transform: translateY(8px);
+      animation: revealLine .4s ease forwards;
+    }
+    .text.reveal > pre,
+    .text.reveal > table,
+    .text.reveal > ul,
+    .text.reveal > ol {
+      animation-duration: .35s;
+    }
+    @keyframes revealLine {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     /* Downloadable file cards */
     .file-list {
       display: flex;
@@ -294,9 +309,8 @@
 
     /* Input area */
     .inputbar {
-      position: absolute;
-      bottom: 16px;
-      left: 16px; right: 16px;
+      flex-shrink: 0;
+      margin: 0 16px 16px;
       background: var(--surface);
       border-radius: 999px;
       padding: 6px 8px;
@@ -331,73 +345,6 @@
     }
     .chat-input::placeholder { color: var(--muted); }
     .chat-input:disabled { opacity: .7; }
-    .attach-btn {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      background: transparent;
-      border: none;
-      color: var(--text);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    .attachment-preview {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--bubble);
-      border: 1px solid #333;
-      border-radius: 999px;
-      padding: 5px 12px;
-      font-size: 13px;
-      color: var(--text);
-      max-width: 180px;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-    .attachment-name { overflow: hidden; text-overflow: ellipsis; direction: ltr; display: inline-block; }
-    .attachment-remove {
-      background: transparent; border: none; color: var(--muted);
-      font-size: 18px; cursor: pointer; line-height: 1;
-      padding: 0 2px;
-    }
-    .attachment-remove:hover { color: var(--danger); }
-
-    .user-attachment {
-      margin-top: 10px;
-      border-radius: 16px;
-      max-width: 260px;
-      max-height: 260px;
-      object-fit: cover;
-      display: block;
-      border: 1px solid #333;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-      cursor: pointer;
-      transition: transform .15s ease, box-shadow .15s ease;
-    }
-    .user-attachment:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
-
-    .user-attachment-file {
-      margin-top: 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bubble);
-      border: 1px solid #333;
-      border-radius: 999px;
-      padding: 7px 14px;
-      font-size: 13px;
-      color: var(--text);
-      direction: ltr;
-    }
-    .user-attachment-file::before {
-      content: '';
-      width: 14px; height: 14px;
-      background: currentColor;
-      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") no-repeat center;
-      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") no-repeat center;
-      mask-size: contain;
-      -webkit-mask-size: contain;
-    }
 
     /* Sidebar */
     .overlay {
@@ -478,12 +425,57 @@
     }
     .toast.show { opacity: 1; }
 
+    /* Intro / splash screen */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: opacity .4s ease, visibility .4s ease;
+    }
+    #splash.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #splash video {
+      width: 100%;
+      height: 100%;
+      max-width: 540px;
+      object-fit: cover;
+      background: #000;
+    }
+    #splash .skip-btn {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-size: 15px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      z-index: 101;
+    }
+
     /* Scrollbar */
     .chat::-webkit-scrollbar { width: 0; }
     .sidebar-list::-webkit-scrollbar { width: 0; }
   </style>
 </head>
 <body>
+  <div id="splash" class="hidden">
+    <video id="introVideo" src="/static/intro.mp4" autoplay muted playsinline></video>
+    <button class="skip-btn" id="skipIntro">تخطي</button>
+  </div>
+
   <div class="app">
     <div class="topbar">
       <div class="group">
@@ -520,17 +512,9 @@
 
     <form class="inputbar" id="inputForm">
       <button type="submit" class="send-btn" id="sendBtn" title="إرسال">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 22h17M5 3.5l14 14M5 13.77V3.5h10.27"/></svg>
       </button>
       <input type="text" class="chat-input" id="chatInput" placeholder="ابعث رسالة لـ Derja Ai" autocomplete="off" />
-      <div class="attachment-preview" id="attachmentPreview" style="display:none;">
-        <span class="attachment-name" id="attachmentName"></span>
-        <button type="button" class="attachment-remove" id="attachmentRemove">&times;</button>
-      </div>
-      <button type="button" class="attach-btn" id="attachBtn" title="إرفاق">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <input type="file" id="fileInput" style="display:none" />
     </form>
 
     <div class="overlay" id="overlay"></div>
@@ -551,25 +535,24 @@
     const inputForm = document.getElementById('inputForm');
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
-    const attachBtn = document.getElementById('attachBtn');
     const menuBtn = document.getElementById('menuBtn');
     const historyBtn = document.getElementById('historyBtn');
     const overlay = document.getElementById('overlay');
     const sidebar = document.getElementById('sidebar');
     const sidebarList = document.getElementById('sidebarList');
     const toast = document.getElementById('toast');
-    const fileInput = document.getElementById('fileInput');
-    const attachmentPreview = document.getElementById('attachmentPreview');
-    const attachmentName = document.getElementById('attachmentName');
-    const attachmentRemove = document.getElementById('attachmentRemove');
+    const splash = document.getElementById('splash');
+    const introVideo = document.getElementById('introVideo');
+    const skipIntro = document.getElementById('skipIntro');
 
     const STORAGE_KEY = 'derja_ai_conversations';
     const ACTIVE_KEY = 'derja_ai_active_id';
+    const INTRO_KEY = 'derja_ai_intro_seen';
     const GREETING = 'مرحبا بيك! أنا Derja Ai، كيف نقدر نساعدك اليوم؟';
 
     let conversations = [];
     let activeId = null;
-    let pendingFile = null;
+    let introCallback = null;
 
     function generateId() {
       return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -652,6 +635,24 @@
       return conversations.find(c => c.id === activeId);
     }
 
+    function hideIntro() {
+      splash.classList.add('hidden');
+      introVideo.pause();
+      introVideo.currentTime = 0;
+      if (introCallback) {
+        const cb = introCallback;
+        introCallback = null;
+        cb();
+      }
+    }
+
+    function showIntro(callback) {
+      introCallback = callback || null;
+      splash.classList.remove('hidden');
+      introVideo.currentTime = 0;
+      introVideo.play().catch(() => {});
+    }
+
     function renderChat() {
       const conv = activeConv();
       chat.innerHTML = '';
@@ -698,39 +699,18 @@
     }
 
     function createNewChat() {
-      createConversation();
-      renderSidebar();
-      renderChat();
-      showToast('محادثة جديدة');
+      showIntro(() => {
+        createConversation();
+        renderSidebar();
+        renderChat();
+        showToast('محادثة جديدة');
+      });
     }
 
     function addUser(messageContent) {
       const div = document.createElement('div');
       div.className = 'msg-user';
-
-      function appendText(t) {
-        const span = document.createElement('span');
-        span.textContent = t;
-        div.appendChild(span);
-      }
-
-      if (typeof messageContent === 'string') {
-        appendText(messageContent);
-      } else if (Array.isArray(messageContent)) {
-        messageContent.forEach(part => {
-          if (part.type === 'text') appendText(part.text);
-          else if (part.type === 'image_url' && part.image_url && part.image_url.url) {
-            const img = document.createElement('img');
-            img.src = part.image_url.url;
-            img.className = 'user-attachment';
-            img.alt = 'صورة مرفقة';
-            img.title = 'انقر لفتح الصورة بالحجم الكامل';
-            img.onclick = () => window.open(img.src, '_blank');
-            div.appendChild(img);
-          }
-        });
-      }
-
+      div.textContent = messageContent;
       chat.appendChild(div);
       scrollBottom();
     }
@@ -828,6 +808,14 @@
       URL.revokeObjectURL(url);
     }
 
+    function revealText(textDiv) {
+      textDiv.classList.add('reveal');
+      const children = Array.from(textDiv.children);
+      children.forEach((child, i) => {
+        child.style.animationDelay = (i * 0.12) + 's';
+      });
+    }
+
     function addAssistantToDOM(text) {
       const wrapper = document.createElement('div');
       wrapper.className = 'msg-assistant';
@@ -904,6 +892,7 @@
         pre.appendChild(btn);
       });
 
+      revealText(textDiv);
       scrollBottom();
     }
 
@@ -1000,63 +989,15 @@
       renderSidebar();
     }
 
-    function readFileAsDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-    function readFileAsText(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsText(file);
-      });
-    }
-    function clearPendingFile() {
-      pendingFile = null;
-      attachmentPreview.style.display = 'none';
-      fileInput.value = '';
-    }
-
-    async function processPendingFile(userText) {
-      if (!pendingFile) return userText;
-      const file = pendingFile;
-      const isImage = file.type.startsWith('image/');
-      const promptText = userText || 'اشرحلي الملف هذا';
-
-      if (isImage) {
-        const base64 = await readFileAsDataURL(file);
-        return [
-          { type: 'text', text: promptText },
-          { type: 'image_url', image_url: { url: base64 } }
-        ];
-      }
-
-      const isText = ['text/','application/json','application/javascript','application/xml','application/x-sh'].some(t => file.type.startsWith(t)) || ['txt','md','csv','json','js','html','htm','css','py','xml','yaml','yml','sql','log'].includes((file.name.split('.').pop() || '').toLowerCase());
-      let fileContent = '';
-      if (isText) {
-        try { fileContent = await readFileAsText(file); } catch (e) {}
-      }
-
-      return promptText + '\n\n[ملف مرفق: ' + file.name + ']' + (fileContent ? '\n' + fileContent : '\n(هذا الملف غير نصي وما نقدرش نقراه)') + '\n\nاشرحلي واش يحتوي أو شنو ندير بيه.';
-    }
-
     async function sendMessage(text) {
       const conv = activeConv();
       if (!conv) return;
 
-      const content = pendingFile ? await processPendingFile(text) : text;
-
-      addUser(content);
-      addMessageToActive('user', content);
+      addUser(text);
+      addMessageToActive('user', text);
       chatInput.value = '';
-      clearPendingFile();
 
-      if (isCreatorQuestion(content)) {
+      if (isCreatorQuestion(text)) {
         const reply = creatorResponse();
         setLoading(true);
         await new Promise(r => setTimeout(r, 600));
@@ -1094,24 +1035,8 @@
     inputForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = chatInput.value.trim();
-      if (!text && !pendingFile) return;
+      if (!text) return;
       sendMessage(text);
-    });
-
-    attachBtn.addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      pendingFile = file;
-      attachmentName.textContent = file.name;
-      attachmentPreview.style.display = 'flex';
-    });
-
-    attachmentRemove.addEventListener('click', () => {
-      clearPendingFile();
     });
 
     function toggleSidebar(show) {
@@ -1122,11 +1047,22 @@
     historyBtn.addEventListener('click', () => toggleSidebar(true));
     overlay.addEventListener('click', () => toggleSidebar(false));
     menuBtn.addEventListener('click', createNewChat);
+    introVideo.addEventListener('ended', hideIntro);
+    skipIntro.addEventListener('click', hideIntro);
 
     // init
     loadConversations();
     renderSidebar();
     renderChat();
+
+    const introSeen = localStorage.getItem(INTRO_KEY) === 'true';
+    if (!introSeen) {
+      localStorage.setItem(INTRO_KEY, 'true');
+      showIntro();
+    } else if (!activeId) {
+      // also show when user lands with no active conversation
+      showIntro();
+    }
   </script>
 </body>
 </html>
