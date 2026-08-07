@@ -4,6 +4,38 @@ import httpx
 from http.server import BaseHTTPRequestHandler
 
 
+def get_provider_config():
+    if os.environ.get("GOOGLE_API_KEY"):
+        return {
+            "api_key": os.environ.get("GOOGLE_API_KEY"),
+            "model": os.environ.get("GOOGLE_MODEL", "gemini-flash-latest"),
+            "base_url": os.environ.get("GOOGLE_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"),
+            "api_path": os.environ.get("GOOGLE_API_PATH", "/chat/completions"),
+        }
+    if os.environ.get("TOKENROUTER_API_KEY"):
+        return {
+            "api_key": os.environ.get("TOKENROUTER_API_KEY"),
+            "model": os.environ.get("TOKENROUTER_MODEL", "openai/gpt-4o-mini"),
+            "base_url": os.environ.get("TOKENROUTER_BASE_URL", "https://api.tokenrouter.com/v1"),
+            "api_path": os.environ.get("TOKENROUTER_API_PATH", "/chat/completions"),
+        }
+    if os.environ.get("OPENROUTER_API_KEY"):
+        return {
+            "api_key": os.environ.get("OPENROUTER_API_KEY"),
+            "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+            "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            "api_path": os.environ.get("OPENROUTER_API_PATH", "/chat/completions"),
+        }
+    if os.environ.get("AGENTROUTER_API_KEY"):
+        return {
+            "api_key": os.environ.get("AGENTROUTER_API_KEY"),
+            "model": os.environ.get("AGENTROUTER_MODEL", "anthropic/claude-opus-5"),
+            "base_url": os.environ.get("AGENTROUTER_BASE_URL", "https://api.agentrouter.org"),
+            "api_path": os.environ.get("AGENTROUTER_API_PATH", "/v1/chat/completions"),
+        }
+    return None
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -24,10 +56,11 @@ class handler(BaseHTTPRequestHandler):
 
         messages = payload.get("messages", [])
 
-        api_key = os.environ.get("TOKENROUTER_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or os.environ.get("AGENTROUTER_API_KEY", "")
-        model = os.environ.get("TOKENROUTER_MODEL") or os.environ.get("OPENROUTER_MODEL") or os.environ.get("AGENTROUTER_MODEL", "openai/gpt-4o-mini")
-        base_url = os.environ.get("TOKENROUTER_BASE_URL") or os.environ.get("OPENROUTER_BASE_URL") or os.environ.get("AGENTROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-        api_path = os.environ.get("TOKENROUTER_API_PATH") or os.environ.get("OPENROUTER_API_PATH") or os.environ.get("AGENTROUTER_API_PATH", "/chat/completions")
+        cfg = get_provider_config()
+        if not cfg:
+            self._send(500, {"error": "مفتاح API غير مضبوط (GOOGLE_API_KEY / OPENROUTER_API_KEY / TOKENROUTER_API_KEY)"})
+            return
+
         site_url = os.environ.get("SITE_URL", "https://derja-ai.vercel.app")
         site_title = os.environ.get("SITE_TITLE", "Derja Ai")
         system_prompt = os.environ.get(
@@ -38,24 +71,20 @@ class handler(BaseHTTPRequestHandler):
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": system_prompt}] + messages
 
-        if not api_key:
-            self._send(500, {"error": "مفتاح API غير مضبوط (OPENROUTER_API_KEY)"})
-            return
-
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {cfg['api_key']}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "HTTP-Referer": site_url,
             "X-Title": site_title,
         }
 
-        data = {"model": model, "max_tokens": 1024, "messages": messages}
+        data = {"model": cfg["model"], "max_tokens": 1024, "messages": messages}
 
         try:
             with httpx.Client(http2=True, follow_redirects=True, timeout=60) as client:
                 resp = client.post(
-                    f"{base_url}{api_path}",
+                    f"{cfg['base_url']}{cfg['api_path']}",
                     headers=headers,
                     json=data,
                 )
