@@ -147,6 +147,8 @@
   }
   .card .actions a:hover, .card .actions button:hover { background: #2f2f2f; }
   .card .actions a.open { background: var(--blue); color: #fff; }
+  .card .actions button.delete { background: rgba(239,68,68,0.15); color: #f87171; }
+  .card .actions button.delete:hover { background: rgba(239,68,68,0.25); }
   .empty {
     text-align: center;
     color: var(--muted);
@@ -278,10 +280,22 @@ function render(items, key) {
       <div class="actions">
         <a class="open" href="${item.url}" target="_blank">فتح</a>
         <button class="view">معاينة</button>
+        <button class="delete">حذف</button>
       </div>`;
     card.querySelector('.view').onclick = () => openPreview(item.key, key);
+    card.querySelector('.delete').onclick = () => deleteConversation(item.key, key);
     list.appendChild(card);
   });
+}
+
+async function deleteConversation(key, adminKey) {
+  if (!confirm('متأكد تحب تمسح المحادثة؟')) return;
+  try {
+    const res = await fetch('/api/admin/conversations?key=' + encodeURIComponent(key) + '&admin_key=' + encodeURIComponent(adminKey), { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { alert(data.error || 'خطأ في الحذف'); return; }
+    load();
+  } catch (e) { alert('فشل الحذف: ' + e.message); }
 }
 
 function openPreview(key, adminKey) {

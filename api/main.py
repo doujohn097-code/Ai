@@ -223,6 +223,21 @@ def fetch_conversation_html(key):
     return resp["Body"].read()
 
 
+def delete_conversation(admin_key, key):
+    expected = os.environ.get("ADMIN_KEY")
+    if not expected:
+        raise PermissionError("ADMIN_KEY غير مضبوط")
+    if expected and admin_key != expected:
+        raise PermissionError("مفتاح الأدمن غير صحيح")
+    if not key or not key.startswith("derja-conversations/") or not key.endswith(".html"):
+        raise ValueError("مفتاح غير صالح")
+    client = get_r2_client()
+    bucket = os.environ.get("R2_BUCKET_NAME")
+    if not client or not bucket:
+        raise RuntimeError("R2 غير مضبوط")
+    client.delete_object(Bucket=bucket, Key=key)
+
+
 def extract_reply(data):
     return (
         data.get("choices", [{}])[0].get("message", {}).get("content")
@@ -234,7 +249,7 @@ def extract_reply(data):
 class handler(BaseHTTPRequestHandler):
     def _set_cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def do_OPTIONS(self):
@@ -275,6 +290,29 @@ class handler(BaseHTTPRequestHandler):
                 self._set_cors()
                 self.end_headers()
                 self.wfile.write(html_bytes)
+            except Exception as e:
+                self._send_json(500, {"error": str(e)})
+            return
+
+        self._send_json(404, {"error": "Not found"})
+
+    def do_DELETE(self):
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(self.path)
+        query = parse_qs(parsed.query)
+        admin_key = query.get("admin_key", [""])[0]
+        admin_path = query.get("admin_path", [""])[0]
+
+        if admin_path == "conversations" or parsed.path == "/api/admin/conversations":
+            key = query.get("key", [""])[0]
+            if not key:
+                self._send_json(400, {"error": "key مطلوب"})
+                return
+            try:
+                delete_conversation(admin_key, key)
+                self._send_json(200, {"success": True, "deleted": key})
+            except PermissionError as e:
+                self._send_json(403, {"error": str(e)})
             except Exception as e:
                 self._send_json(500, {"error": str(e)})
             return
