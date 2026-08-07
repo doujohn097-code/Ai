@@ -2,7 +2,7 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/chat", "destination": "/api/main" },
-    { "source": "/api/admin/:path*", "destination": "/api/main" }
+    { "source": "/api/admin/:path*", "destination": "/api/main?admin_path=$1" }
   ],
   "functions": {
     "api/main.py": {

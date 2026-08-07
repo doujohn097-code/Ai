@@ -248,8 +248,9 @@ class handler(BaseHTTPRequestHandler):
         path = parsed.path
         query = parse_qs(parsed.query)
         admin_key = query.get("admin_key", [""])[0]
+        admin_path = query.get("admin_path", [""])[0]
 
-        if path == "/api/admin/conversations":
+        if admin_path == "conversations" or path == "/api/admin/conversations":
             try:
                 items = list_conversations(admin_key)
                 self._send_json(200, {"conversations": items})
@@ -259,7 +260,7 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(500, {"error": str(e)})
             return
 
-        if path == "/api/admin/view":
+        if admin_path == "view" or path == "/api/admin/view":
             key = query.get("key", [""])[0]
             if not key:
                 self._send_json(400, {"error": "key مطلوب"})
