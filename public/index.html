@@ -101,6 +101,17 @@
       flex-direction: column;
       gap: 16px;
       z-index: 10;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(59,130,246,0.07), transparent 30%),
+        radial-gradient(circle at 85% 80%, rgba(139,92,246,0.07), transparent 30%),
+        transparent;
+      background-size: 200% 200%;
+      animation: aurora 20s ease-in-out infinite;
+    }
+    @keyframes aurora {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
     .msg-user, .msg-assistant {
       max-width: 85%;
