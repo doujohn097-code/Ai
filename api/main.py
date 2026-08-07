@@ -6,15 +6,6 @@ from http.server import BaseHTTPRequestHandler
 
 def get_provider_configs():
     configs = []
-    if os.environ.get("GROQ_API_KEY"):
-        configs.append({
-            "name": "groq",
-            "api_key": os.environ.get("GROQ_API_KEY"),
-            "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-            "base_url": os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
-            "api_path": os.environ.get("GROQ_API_PATH", "/chat/completions"),
-            "timeout": 60,
-        })
     if os.environ.get("GOOGLE_API_KEY"):
         configs.append({
             "name": "google",
@@ -76,7 +67,7 @@ class handler(BaseHTTPRequestHandler):
 
         configs = get_provider_configs()
         if not configs:
-            self._send(500, {"error": "مفتاح API غير مضبوط (GROQ_API_KEY / GOOGLE_API_KEY / OPENROUTER_API_KEY / TOKENROUTER_API_KEY)"})
+            self._send(500, {"error": "مفتاح API غير مضبوط (GOOGLE_API_KEY / OPENROUTER_API_KEY / TOKENROUTER_API_KEY)"})
             return
 
         site_url = os.environ.get("SITE_URL", "https://derja-ai.vercel.app")
