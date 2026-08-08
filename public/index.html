@@ -1241,13 +1241,13 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.error) {
-          throw new Error(data.detail || data.error || 'فشل الاتصال بالـ API');
+          throw new Error('api failed');
         }
         const reply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'ما فهمتش، واش تقدر توضّحلي؟';
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
       } catch (err) {
-        addAssistantToDOM('خطأ: ' + err.message);
+        addAssistantToDOM('سمحني، كاين بروبلام. عاود حاول مبعد.');
       } finally {
         removeTyping();
         setLoading(false);
