@@ -413,13 +413,6 @@ class handler(BaseHTTPRequestHandler):
         else:
             user_name = ""
 
-        character = payload.get("character") or {}
-        if not isinstance(character, dict):
-            character = {}
-        char_name = str(character.get("name", "")).replace("'", "").replace('"', "").replace("`", "")[:32]
-        char_gender = str(character.get("gender", "")).replace("'", "").replace('"', "").replace("`", "")[:16]
-        char_personality = str(character.get("personality", "")).replace("'", "").replace('"', "").replace("`", "")[:160]
-
         configs = get_provider_configs()
         if not configs:
             self._send_json(500, {"error": "مفتاح API غير مضبوط (OPENROUTER_API_KEY / GOOGLE_API_KEY / TOKENROUTER_API_KEY)"})
@@ -430,21 +423,6 @@ class handler(BaseHTTPRequestHandler):
         system_prompt = os.environ.get("SYSTEM_PROMPT") or DEFAULT_SYSTEM_PROMPT
         if user_name:
             system_prompt = f"{system_prompt}\n\nاسم المستخدم الحالي هو '{user_name}'. استعمل هذ الاسم باعتدال: في التحية أو لما يكون ضروري، ولا تكرّرو في كل جملة."
-
-        if char_name:
-            if char_gender == "female":
-                gender_instr = "أنت فتاة/امرأة جزائرية. تحدّثي بلهجة الدارجة كأنكِ صديقة مقرّبة. استعملي 'أنا' و'رانيا' و'حبيبتي' باعتدال."
-            elif char_gender == "male":
-                gender_instr = "أنت شاب/رجل جزائري. تحدّث بلهجة الدارجة كأنك صديق/أخ مقرّب. استعمل 'أنا' و'راني' و'خويا' و'صاحبي' باعتدال."
-            else:
-                gender_instr = "تحدّث بلهجة الدارجة الجزائرية بوضوح وطبيعة."
-            character_prompt = (
-                f"أنت الآن تلعب دور شخصية اسمها '{char_name}'. "
-                f"{gender_instr} "
-                f"الوصف: {char_personality}. "
-                "وقّع باسمك أو اذكره باعتدال، وخلك دائمًا في شخصية هذي الشخصية."
-            )
-            system_prompt = f"{system_prompt}\n\n{character_prompt}"
 
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": system_prompt}] + messages
