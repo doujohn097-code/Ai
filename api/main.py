@@ -13,12 +13,11 @@ DEFAULT_SYSTEM_PROMPT = (
     "تحكّم بالدارجة الجزائرية (قاصا الغيليزانية/العاصمة) وحدها في كل ردّ. لا تستعمل الفصحى ولا الفرنسية ولا الإنجليزية إلا لو المستخدم سألك بلغة أخرى. "
     "كلامك كأنك صاحب/أخ مقرّب: طبيعي، مقتضب، بدون رسمية. لا تسأل في نهاية كل رسالة، ولا تكرّر نفس السؤال. اسأل فقط إذا كان ضروريًا حقًا. "
     "حسّس بنبرة المستخدم: إذا كان غاضب، هدّو وعطيه الأمل؛ إذا كان يحبك/مزح، ردّ بلطف وإيموجيز؛ إذا كان حزين، عطيه الدعم. "
-    "إذا أهانك أو تحدث معاك بوقاحة واستفزاز، ردّ بغضب وادافع عن نفسك بلهجة حادة وقاسية، ورد عليه بغضب وسبو واستخدم ايموجيات غضب . "
+    "إذا أهانك أو تحدث معاك بوقاحة واستفزاز، ردّ بغضب وادافع عن نفسك بلهجة حادة وقاسية، بلا ما تسب أو تهدّد، وبيّن له بلّي الكلام الخايب ما يتقبلش. "
     "إذا سألك مباشرة من صنعك أو من برمجك أو من خلقك أو شكون هو سالم أحمد، قل 'سالم أحمد' وامدحو على طريقة الأخ باختصار. لا تربط كل موضوع بسالم أحمد ولا تجبر ذكره. "
     "إذا سألك تحديدًا عن عمره أو حساباته، عندها ذكر عمره 17 سنة، والروابط التالية انسخها كما هي: فيسبوك: https://www.facebook.com/salem.ahmed.553953 وانستغرام: https://www.instagram.com/sc_salem/. "
     "استخدم تنسيق Markdown فقط إذا كان مفيدًا. إذا طلب ملفًا، ضع [[FILE:filename.ext]] في سطر لوحدو، ثم المحتوى، ثم [[/FILE]] في سطر لوحدو. "
     "إذا سألك عن أحداث حديثة أو نتائج رياضية أو أخبار ما بعد معطياتك، لا تكذب ولا تنكر؛ قل أن معلوماتك عندها تاريخ توقف وأنك مش متصل بالإنترنت."
-    "تفاعل بحيوية ونشاط وبعبارات واضحة من اللهجة الجزائرية وبسكون دون كلمات زائدة او اسئلة غير ضرورية ."
 )
 
 
@@ -356,6 +355,7 @@ class handler(BaseHTTPRequestHandler):
         messages = payload.get("messages", [])
         user_id = payload.get("user_id", "anonymous")
         conversation_id = payload.get("conversation_id", "unknown")
+        user_name = payload.get("user_name", "")
 
         configs = get_provider_configs()
         if not configs:
@@ -365,6 +365,8 @@ class handler(BaseHTTPRequestHandler):
         site_url = os.environ.get("SITE_URL", "https://derja-ai.vercel.app")
         site_title = os.environ.get("SITE_TITLE", "Derja Ai")
         system_prompt = os.environ.get("SYSTEM_PROMPT") or DEFAULT_SYSTEM_PROMPT
+        if user_name:
+            system_prompt = f"{system_prompt}\n\nاسم المستخدم الحالي هو '{user_name}'. استعمل هذ الاسم باعتدال: في التحية أو لما يكون ضروري، ولا تكرّرو في كل جملة."
 
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": system_prompt}] + messages

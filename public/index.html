@@ -666,11 +666,13 @@
     const STORAGE_KEY = 'derja_ai_conversations';
     const ACTIVE_KEY = 'derja_ai_active_id';
     const USER_KEY = 'derja_ai_user_id';
+    const USERNAME_KEY = 'derja_ai_username';
     const GREETING = 'مرحبا بيك! أنا Derja Ai، كيف نقدر نساعدك اليوم؟';
 
     let conversations = [];
     let activeId = null;
     let selectedImage = null;
+    let userName = localStorage.getItem(USERNAME_KEY) || '';
     let userId = localStorage.getItem(USER_KEY);
     if (!userId) {
       userId = Math.random().toString(36).substr(2, 10) + Date.now().toString(36);
@@ -710,6 +712,8 @@
         messages: [{role:'assistant', content: GREETING}],
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        askedName: false,
+        waitingName: false,
       };
       conversations.unshift(conv);
       activeId = id;
@@ -775,6 +779,7 @@
       chat.innerHTML = '';
       if (!conv) return;
       conv.messages.forEach(m => {
+        if (m.role === 'system') return;
         if (m.role === 'user') {
           addUser(m.content);
         } else {
@@ -1209,15 +1214,40 @@
       renderSidebar();
     }
 
+    function askUserName(conv) {
+      if (userName || conv.askedName) return false;
+      conv.askedName = true;
+      conv.waitingName = true;
+      const q = 'شكون اسمك خويا؟';
+      addAssistantToDOM(q);
+      addMessageToActive('assistant', q);
+      saveConversations();
+      return true;
+    }
+
     async function sendMessage(content) {
       const conv = activeConv();
       if (!conv) return;
 
-      addUser(content);
-      addMessageToActive('user', content);
-      chatInput.value = '';
-      removeSelectedImage();
-      updateInputState();
+      if (conv.waitingName) {
+        const name = textFromContent(content).trim();
+        if (!name) return;
+        userName = name;
+        localStorage.setItem(USERNAME_KEY, name);
+        conv.userName = name;
+        conv.waitingName = false;
+        addUser(content);
+        addMessageToActive('user', content);
+        chatInput.value = '';
+        removeSelectedImage();
+        updateInputState();
+      } else {
+        addUser(content);
+        addMessageToActive('user', content);
+        chatInput.value = '';
+        removeSelectedImage();
+        updateInputState();
+      }
 
       if (isCreatorQuestion(content)) {
         const reply = creatorResponse();
@@ -1225,6 +1255,7 @@
         await new Promise(r => setTimeout(r, 600));
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
+        if (askUserName(conv)) { setLoading(false); return; }
         setLoading(false);
         return;
       }
@@ -1237,7 +1268,7 @@
         const res = await fetch(`${cfg.base}/api/chat`, {
           method: 'POST',
           headers: {...cfg.headers, 'Content-Type':'application/json'},
-          body: JSON.stringify({user_id: userId, conversation_id: activeId, messages: conv.messages})
+          body: JSON.stringify({user_id: userId, conversation_id: activeId, user_name: userName, messages: conv.messages})
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.error) {
@@ -1246,6 +1277,7 @@
         const reply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'ما فهمتش، واش تقدر توضّحلي؟';
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
+        askUserName(conv);
       } catch (err) {
         addAssistantToDOM('سمحني، كاين بروبلام. عاود حاول مبعد.');
       } finally {
