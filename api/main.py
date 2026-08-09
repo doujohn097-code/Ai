@@ -8,12 +8,22 @@ from botocore.config import Config
 from http.server import BaseHTTPRequestHandler
 
 
+def get_openrouter_keys():
+    keys = []
+    for suffix in ("", "_2", "_3"):
+        key = os.environ.get(f"OPENROUTER_API_KEY{suffix}")
+        if key:
+            keys.append(key)
+    return keys
+
+
 def get_provider_configs():
     configs = []
-    if os.environ.get("OPENROUTER_API_KEY"):
+    openrouter_keys = get_openrouter_keys()
+    for idx, key in enumerate(openrouter_keys, start=1):
         configs.append({
-            "name": "openrouter",
-            "api_key": os.environ.get("OPENROUTER_API_KEY"),
+            "name": f"openrouter{idx}",
+            "api_key": key,
             "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
             "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
             "api_path": os.environ.get("OPENROUTER_API_PATH", "/chat/completions"),
