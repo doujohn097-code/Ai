@@ -246,7 +246,7 @@ async function load() {
   list.innerHTML = '';
   stats.style.display = 'none';
   try {
-    const res = await fetch('/api/admin/conversations?admin_key=' + encodeURIComponent(key));
+    const res = await fetch('/api/admin/conversations', { headers: { 'X-Admin-Key': key } });
     const data = await res.json();
     if (!res.ok) { showError(data.error || 'خطأ في تحميل المحادثات'); return; }
     render(data.conversations || [], key);
@@ -291,21 +291,30 @@ function render(items, key) {
 async function deleteConversation(key, adminKey) {
   if (!confirm('متأكد تحب تمسح المحادثة؟')) return;
   try {
-    const res = await fetch('/api/admin/conversations?key=' + encodeURIComponent(key) + '&admin_key=' + encodeURIComponent(adminKey), { method: 'DELETE' });
+    const res = await fetch('/api/admin/conversations?key=' + encodeURIComponent(key), {
+      method: 'DELETE',
+      headers: { 'X-Admin-Key': adminKey }
+    });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { alert(data.error || 'خطأ في الحذف'); return; }
     load();
   } catch (e) { alert('فشل الحذف: ' + e.message); }
 }
 
-function openPreview(key, adminKey) {
-  frame.src = '/api/admin/view?key=' + encodeURIComponent(key) + '&admin_key=' + encodeURIComponent(adminKey);
-  modal.style.display = 'flex';
+async function openPreview(key, adminKey) {
+  try {
+    const res = await fetch('/api/admin/view?key=' + encodeURIComponent(key), { headers: { 'X-Admin-Key': adminKey } });
+    if (!res.ok) { alert('خطأ في تحميل المعاينة'); return; }
+    const html = await res.text();
+    frame.srcdoc = html;
+    modal.style.display = 'flex';
+  } catch (e) { alert('فشل المعاينة: ' + e.message); }
 }
 
 function closePreview() {
   modal.style.display = 'none';
   frame.src = '';
+  frame.srcdoc = '';
 }
 
 function showError(msg) {

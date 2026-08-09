@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import html
 import datetime
@@ -6,6 +7,43 @@ import httpx
 import boto3
 from botocore.config import Config
 from http.server import BaseHTTPRequestHandler
+
+
+def parse_credit_limit(text):
+    if not text:
+        return None
+    m = re.search(r'can only afford (\d+)', text, re.IGNORECASE)
+    if m:
+        return max(256, int(m.group(1)) - 50)
+    return None
+
+
+def safe_id(value, default="anonymous", max_len=64):
+    if not isinstance(value, str):
+        value = str(value)
+    value = re.sub(r"[^a-zA-Z0-9_-]", "", value)
+    if not value:
+        value = default
+    return value[:max_len]
+
+
+def is_safe_conv_key(key):
+    if not isinstance(key, str):
+        return False
+    if not key.startswith("derja-conversations/") or not key.endswith(".html"):
+        return False
+    if ".." in key or "\x00" in key:
+        return False
+    parts = key.split("/")
+    if len(parts) != 3:
+        return False
+    return True
+
+
+def get_admin_key(handler):
+    from urllib.parse import parse_qs, urlparse
+    parsed = urlparse(handler.path)
+    return handler.headers.get("X-Admin-Key", "") or parse_qs(parsed.query).get("admin_key", [""])[0]
 
 
 # عدّل هنا لتعليمات Derja Ai
@@ -17,7 +55,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "إذا سألك مباشرة من صنعك أو من برمجك أو من خلقك أو شكون هو سالم أحمد، قل 'سالم أحمد' وامدحو على طريقة الأخ باختصار. لا تربط كل موضوع بسالم أحمد ولا تجبر ذكره. "
     "إذا سألك تحديدًا عن عمره أو حساباته، عندها ذكر عمره 17 سنة، والروابط التالية انسخها كما هي: فيسبوك: https://www.facebook.com/salem.ahmed.553953 وانستغرام: https://www.instagram.com/sc_salem/. "
     "استخدم تنسيق Markdown فقط إذا كان مفيدًا. إذا طلب ملفًا، ضع [[FILE:filename.ext]] في سطر لوحدو، ثم المحتوى، ثم [[/FILE]] في سطر لوحدو. "
-    "إذا سألك عن أحداث حديثة أو نتائج رياضية أو أخبار ما بعد معطياتك، لا تكذب ولا تنكر؛ قل أن معلوماتك عندها تاريخ توقف وأنك مش متصل بالإنترنت."
+    "إذا سألك عن أحداث حديثة أو نتائج رياضية أو أخبار بعد معطياتك، استخدم نتائج البحث المباشر (web search) المُتاحة واجب بناءً عليها. إذا ما قدرتش تجيب معلومة محدّدة، قول 'ما عنديش تأكيد على هذي المعلومة حاليًا'. لا تدّعي أنّك مش متصل بالإنترنت."
 )
 
 
@@ -189,8 +227,8 @@ def upload_conversation(user_id, conversation_id, messages):
     public_url = os.environ.get("R2_PUBLIC_URL", "").rstrip("/")
     if not client or not bucket:
         return None
-    if not user_id:
-        user_id = "anonymous"
+    user_id = safe_id(user_id, "anonymous")
+    conversation_id = safe_id(conversation_id, "unknown")
     key = f"derja-conversations/{user_id}/{conversation_id}.html"
     html = render_conversation_html(messages, user_id, conversation_id)
     client.put_object(
@@ -238,6 +276,8 @@ def list_conversations(admin_key):
 
 
 def fetch_conversation_html(key):
+    if not is_safe_conv_key(key):
+        return None
     client = get_r2_client()
     bucket = os.environ.get("R2_BUCKET_NAME")
     if not client or not bucket:
@@ -252,7 +292,7 @@ def delete_conversation(admin_key, key):
         raise PermissionError("ADMIN_KEY غير مضبوط")
     if expected and admin_key != expected:
         raise PermissionError("مفتاح الأدمن غير صحيح")
-    if not key or not key.startswith("derja-conversations/") or not key.endswith(".html"):
+    if not is_safe_conv_key(key):
         raise ValueError("مفتاح غير صالح")
     client = get_r2_client()
     bucket = os.environ.get("R2_BUCKET_NAME")
@@ -270,10 +310,10 @@ def extract_reply(data):
 
 
 class handler(BaseHTTPRequestHandler):
-    def _set_cors(self):
+    def _set_cors(self, admin=False):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Key")
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -285,20 +325,27 @@ class handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
-        admin_key = query.get("admin_key", [""])[0]
         admin_path = query.get("admin_path", [""])[0]
 
         if admin_path == "conversations" or path == "/api/admin/conversations":
+            admin_key = get_admin_key(self)
+            if not admin_key:
+                self._send_json(403, {"error": "مفتاح الأدمن مطلوب"})
+                return
             try:
                 items = list_conversations(admin_key)
                 self._send_json(200, {"conversations": items})
             except PermissionError as e:
                 self._send_json(403, {"error": str(e)})
             except Exception as e:
-                self._send_json(500, {"error": str(e)})
+                self._send_json(500, {"error": "خطأ في الخادم"})
             return
 
         if admin_path == "view" or path == "/api/admin/view":
+            admin_key = get_admin_key(self)
+            if not admin_key:
+                self._send_json(403, {"error": "مفتاح الأدمن مطلوب"})
+                return
             key = query.get("key", [""])[0]
             if not key:
                 self._send_json(400, {"error": "key مطلوب"})
@@ -310,11 +357,13 @@ class handler(BaseHTTPRequestHandler):
                     return
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("X-Frame-Options", "SAMEORIGIN")
+                self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src * data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none';")
                 self._set_cors()
                 self.end_headers()
                 self.wfile.write(html_bytes)
             except Exception as e:
-                self._send_json(500, {"error": str(e)})
+                self._send_json(500, {"error": "خطأ في الخادم"})
             return
 
         self._send_json(404, {"error": "Not found"})
@@ -323,10 +372,13 @@ class handler(BaseHTTPRequestHandler):
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
-        admin_key = query.get("admin_key", [""])[0]
         admin_path = query.get("admin_path", [""])[0]
 
         if admin_path == "conversations" or parsed.path == "/api/admin/conversations":
+            admin_key = get_admin_key(self)
+            if not admin_key:
+                self._send_json(403, {"error": "مفتاح الأدمن مطلوب"})
+                return
             key = query.get("key", [""])[0]
             if not key:
                 self._send_json(400, {"error": "key مطلوب"})
@@ -337,7 +389,7 @@ class handler(BaseHTTPRequestHandler):
             except PermissionError as e:
                 self._send_json(403, {"error": str(e)})
             except Exception as e:
-                self._send_json(500, {"error": str(e)})
+                self._send_json(500, {"error": "خطأ في الخادم"})
             return
 
         self._send_json(404, {"error": "Not found"})
@@ -353,9 +405,20 @@ class handler(BaseHTTPRequestHandler):
             return
 
         messages = payload.get("messages", [])
-        user_id = payload.get("user_id", "anonymous")
-        conversation_id = payload.get("conversation_id", "unknown")
+        user_id = safe_id(payload.get("user_id", "anonymous"), "anonymous")
+        conversation_id = safe_id(payload.get("conversation_id", "unknown"), "unknown")
         user_name = payload.get("user_name", "")
+        if isinstance(user_name, str):
+            user_name = user_name.replace("'", "").replace('"', "")[:64]
+        else:
+            user_name = ""
+
+        character = payload.get("character") or {}
+        if not isinstance(character, dict):
+            character = {}
+        char_name = str(character.get("name", "")).replace("'", "").replace('"', "").replace("`", "")[:32]
+        char_gender = str(character.get("gender", "")).replace("'", "").replace('"', "").replace("`", "")[:16]
+        char_personality = str(character.get("personality", "")).replace("'", "").replace('"', "").replace("`", "")[:160]
 
         configs = get_provider_configs()
         if not configs:
@@ -368,15 +431,35 @@ class handler(BaseHTTPRequestHandler):
         if user_name:
             system_prompt = f"{system_prompt}\n\nاسم المستخدم الحالي هو '{user_name}'. استعمل هذ الاسم باعتدال: في التحية أو لما يكون ضروري، ولا تكرّرو في كل جملة."
 
+        if char_name:
+            if char_gender == "female":
+                gender_instr = "أنت فتاة/امرأة جزائرية. تحدّثي بلهجة الدارجة كأنكِ صديقة مقرّبة. استعملي 'أنا' و'رانيا' و'حبيبتي' باعتدال."
+            elif char_gender == "male":
+                gender_instr = "أنت شاب/رجل جزائري. تحدّث بلهجة الدارجة كأنك صديق/أخ مقرّب. استعمل 'أنا' و'راني' و'خويا' و'صاحبي' باعتدال."
+            else:
+                gender_instr = "تحدّث بلهجة الدارجة الجزائرية بوضوح وطبيعة."
+            character_prompt = (
+                f"أنت الآن تلعب دور شخصية اسمها '{char_name}'. "
+                f"{gender_instr} "
+                f"الوصف: {char_personality}. "
+                "وقّع باسمك أو اذكره باعتدال، وخلك دائمًا في شخصية هذي الشخصية."
+            )
+            system_prompt = f"{system_prompt}\n\n{character_prompt}"
+
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": system_prompt}] + messages
 
         data = {"model": "", "messages": messages}
-        last_err = ""
+        errors = []
         result = None
         for cfg in configs:
             data["model"] = cfg["model"]
-            data["max_tokens"] = cfg.get("max_tokens", 2048)
+            max_tokens = cfg.get("max_tokens", 2048)
+            data["max_tokens"] = max_tokens
+            if "openrouter" in cfg.get("name", "") and os.environ.get("OPENROUTER_WEB_SEARCH", "true").lower() in ("1", "true", "yes"):
+                data["tools"] = [{"type": "openrouter:web_search"}]
+            else:
+                data.pop("tools", None)
             headers = {
                 "Authorization": f"Bearer {cfg['api_key']}",
                 "Content-Type": "application/json",
@@ -385,23 +468,36 @@ class handler(BaseHTTPRequestHandler):
                 "X-Title": site_title,
             }
             try:
-                with httpx.Client(http2=True, follow_redirects=True, timeout=cfg.get("timeout", 60)) as client:
-                    resp = client.post(
-                        f"{cfg['base_url']}{cfg['api_path']}",
-                        headers=headers,
-                        json=data,
-                    )
-                    text = resp.text
-                    content_type = resp.headers.get("content-type", "")
-                if resp.status_code == 200 and "json" in content_type.lower() and text.lstrip().startswith(("{", "[")):
-                    result = json.loads(text)
+                with httpx.Client(follow_redirects=True, timeout=cfg.get("timeout", 60)) as client:
+                    for attempt in range(2):
+                        resp = client.post(
+                            f"{cfg['base_url']}{cfg['api_path']}",
+                            headers=headers,
+                            json=data,
+                        )
+                        text = resp.text
+                        content_type = resp.headers.get("content-type", "")
+                        if resp.status_code == 200 and "json" in content_type.lower() and text.lstrip().startswith(("{", "[")):
+                            result = json.loads(text)
+                            break
+                        if attempt == 0 and (resp.status_code == 402 or "credits" in (text or "").lower()):
+                            limit = parse_credit_limit(text)
+                            if limit and limit < data["max_tokens"]:
+                                data["max_tokens"] = limit
+                                continue
+                        errors.append(text[:800] if text else f"مزود {cfg.get('name', '')} لم يرد بنجاح")
+                        break
+                if result:
                     break
-                last_err = text[:800] if text else f"مزود {cfg.get('name', '')} لم يرد بنجاح"
             except Exception as e:
-                last_err = str(e)
+                errors.append(str(e))
 
         if not result:
-            self._send_json(502, {"error": last_err or "تعذر الوصول إلى مزود الذكاء الاصطناعي", "detail": last_err})
+            all_err = " ".join(errors).lower()
+            error_msg = "تعذر الوصول إلى مزود الذكاء الاصطناعي"
+            if "credits" in all_err or "quota" in all_err or "429" in all_err:
+                error_msg = "انتهى الرصيد أو تجاوزت الحد المسموح. جرّب مفتاحًا آخر أو اشحن الرصيد."
+            self._send_json(502, {"error": error_msg})
             return
 
         reply = extract_reply(result)

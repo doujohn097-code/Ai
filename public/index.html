@@ -7,6 +7,16 @@
   <link rel="icon" type="image/png" href="/static/logo.png" />
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+  <script>
+    if (typeof DOMPurify !== 'undefined' && DOMPurify.addHook) {
+      DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+        if (node.tagName === 'A' && node.hasAttribute('href')) {
+          node.setAttribute('target', '_blank');
+          node.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
+    }
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -569,6 +579,66 @@
     /* Scrollbar */
     .chat::-webkit-scrollbar { width: 0; }
     .sidebar-list::-webkit-scrollbar { width: 0; }
+
+    /* Disclaimer & character modal */
+    .disclaimer, .char-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s;
+      padding: 16px;
+    }
+    .disclaimer.open, .char-modal.open { opacity: 1; pointer-events: all; }
+    .disclaimer-box, .char-box {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+    }
+    .disclaimer-box h3, .char-box h3 { margin-bottom: 12px; color: var(--danger); font-size: 20px; }
+    .disclaimer-box p, .char-box p { line-height: 1.6; margin-bottom: 20px; color: #d1d5db; }
+    .disclaimer-box button, .char-box button {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .disclaimer-box button:hover, .char-box button:hover { background: var(--blue-active); }
+
+    .char-box { text-align: right; }
+    .char-box label { display: block; margin: 12px 0 6px; font-size: 14px; color: var(--muted); }
+    .char-box input[type=text],
+    .char-box select,
+    .char-box textarea,
+    .char-box input[type=file] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      outline: none;
+      font-size: 15px;
+    }
+    .char-box textarea { resize: none; }
+    .char-box img { max-width: 80px; max-height: 80px; border-radius: 50%; object-fit: cover; margin-top: 8px; }
+    .char-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: center; }
+    .char-actions button.cancel { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .char-actions button.cancel:hover { background: var(--bubble); }
   </style>
 </head>
 <body>
@@ -642,6 +712,37 @@
     <img id="lightboxImg" src="" alt="معاينة" />
   </div>
 
+  <div id="disclaimer" class="disclaimer">
+    <div class="disclaimer-box">
+      <h3>تحذير</h3>
+      <p>سالم أحمد لا يتحمل أي إجابات صادرة عن هذا النموذج ولا أي إساءة صادرة منه. حنا خاطينا.</p>
+      <button id="acceptDisclaimer">فهمت</button>
+    </div>
+  </div>
+
+  <div id="charModal" class="char-modal">
+    <div class="char-box">
+      <h3>شخصية مخصصة</h3>
+      <label for="charName">اسم الشخصية</label>
+      <input type="text" id="charName" placeholder="مثلاً: نور" />
+      <label for="charGender">الجنس</label>
+      <select id="charGender">
+        <option value="male">ذكر</option>
+        <option value="female">أنثى</option>
+        <option value="neutral">محايد</option>
+      </select>
+      <label for="charImage">صورة الشخصية</label>
+      <input type="file" id="charImage" accept="image/*" />
+      <img id="charImagePreview" src="" alt="" style="display:none;" />
+      <label for="charPersonality">شخصية / سلوك (اختياري)</label>
+      <textarea id="charPersonality" rows="3" placeholder="مثلاً: لطيفة، مزحة، تدعم صديقها"></textarea>
+      <div class="char-actions">
+        <button id="startCharChat" class="start">ابدأ</button>
+        <button id="cancelChar" class="cancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const chat = document.getElementById('chat');
     const inputForm = document.getElementById('inputForm');
@@ -662,16 +763,28 @@
     const toast = document.getElementById('toast');
     const splash = document.getElementById('splash');
     const introVideo = document.getElementById('introVideo');
+    const disclaimer = document.getElementById('disclaimer');
+    const acceptDisclaimer = document.getElementById('acceptDisclaimer');
+    const charModal = document.getElementById('charModal');
+    const charName = document.getElementById('charName');
+    const charGender = document.getElementById('charGender');
+    const charImage = document.getElementById('charImage');
+    const charImagePreview = document.getElementById('charImagePreview');
+    const charPersonality = document.getElementById('charPersonality');
+    const startCharChat = document.getElementById('startCharChat');
+    const cancelChar = document.getElementById('cancelChar');
 
     const STORAGE_KEY = 'derja_ai_conversations';
     const ACTIVE_KEY = 'derja_ai_active_id';
     const USER_KEY = 'derja_ai_user_id';
     const USERNAME_KEY = 'derja_ai_username';
+    const DISCLAIMER_KEY = 'derja_ai_disclaimer_seen';
     const GREETING = 'واه خويا! أنا Derja Ai، شنو نديرلك؟';
 
     let conversations = [];
     let activeId = null;
     let selectedImage = null;
+    let selectedCharImage = null;
     let userName = localStorage.getItem(USERNAME_KEY) || '';
     let userId = localStorage.getItem(USER_KEY);
     if (!userId) {
@@ -709,7 +822,34 @@
       const conv = {
         id,
         title: 'محادثة جديدة',
+        character: null,
         messages: [{role:'assistant', content: GREETING}],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      conversations.unshift(conv);
+      activeId = id;
+      if (save) saveConversations();
+      return conv;
+    }
+
+    function createCustomConversation(character, save = true) {
+      const id = generateId();
+      let greet = GREETING;
+      if (character && character.name) {
+        if (character.gender === 'female') {
+          greet = `واه حبيبتي! أنا ${character.name}، كيفاش نقدر نساعدك اليوم؟`;
+        } else if (character.gender === 'neutral') {
+          greet = `واه! أنا ${character.name}، شنو نديرلك اليوم؟`;
+        } else {
+          greet = `واه خويا! أنا ${character.name}، شنو نديرلك اليوم؟`;
+        }
+      }
+      const conv = {
+        id,
+        title: character && character.name ? character.name : 'محادثة مخصصة',
+        character,
+        messages: [{role:'assistant', content: greet}],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -796,6 +936,13 @@
       newItem.innerHTML = '<span class="title">+ محادثة جديدة</span>';
       newItem.onclick = () => { createNewChat(); toggleSidebar(false); };
       sidebarList.appendChild(newItem);
+
+      const customItem = document.createElement('div');
+      customItem.className = 'sidebar-item new-chat-item';
+      customItem.style.background = 'rgba(124,58,237,0.15)';
+      customItem.innerHTML = '<span class="title"> شخصية مخصصة</span>';
+      customItem.onclick = () => { openCharModal(); toggleSidebar(false); };
+      sidebarList.appendChild(customItem);
 
       conversations.forEach(conv => {
         const div = document.createElement('div');
@@ -923,10 +1070,11 @@
         mdLinks.push({ key, text: `[${label}](${url})` });
         return key;
       });
-      const linked = noMd.replace(/(https?:\/\/[^\s<>]+)/g, url => {
+      const linked = noMd.replace(/(https?:\/\/[^\s<>"']+)/g, url => {
         const clean = url.replace(/[.,;:!?)}\]\>]+$/, '');
         const suffix = url.slice(clean.length);
-        return `<a href="${clean}" class="url-link" target="_blank">${clean}</a>${suffix}`;
+        const safeClean = escapeHtml(clean).replace(/"/g, '&quot;');
+        return `<a href="${safeClean}" class="url-link" target="_blank" rel="noopener noreferrer">${safeClean}</a>${suffix}`;
       });
       let final = linked;
       mdLinks.forEach(({ key, text }) => {
@@ -940,7 +1088,7 @@
         const raw = marked.parse(safe, { headerIds: false, mangle: false });
         return DOMPurify.sanitize(raw, {
           ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'pre', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
-          ALLOWED_ATTR: ['href', 'target', 'class']
+          ALLOWED_ATTR: ['href', 'target', 'class', 'rel']
         });
       } catch (e) {
         return escapeHtml(text).replace(/\n/g, '<br>');
@@ -1043,10 +1191,11 @@
       const row = document.createElement('div');
       row.className = 'assistant-row reverse';
 
+      const conv = activeConv();
       const avatar = document.createElement('img');
-      avatar.src = '/static/logo.png';
+      avatar.src = conv && conv.character && conv.character.image ? conv.character.image : '/static/logo.png';
       avatar.className = 'assistant-avatar';
-      avatar.alt = 'Derja Ai';
+      avatar.alt = conv && conv.character && conv.character.name ? conv.character.name : 'Derja Ai';
 
       const content = document.createElement('div');
 
@@ -1122,10 +1271,11 @@
       wrapper.id = 'typingIndicator';
       const row = document.createElement('div');
       row.className = 'assistant-row reverse';
+      const conv = activeConv();
       const avatar = document.createElement('img');
-      avatar.src = '/static/logo.png';
+      avatar.src = conv && conv.character && conv.character.image ? conv.character.image : '/static/logo.png';
       avatar.className = 'assistant-avatar';
-      avatar.alt = 'Derja Ai';
+      avatar.alt = conv && conv.character && conv.character.name ? conv.character.name : 'Derja Ai';
       const content = document.createElement('div');
       content.className = 'typing';
       content.innerHTML = '<span></span><span></span><span></span>';
@@ -1169,12 +1319,7 @@
     function apiConfig() {
       const url = new URL(window.location.href);
       const base = `${url.protocol}//${url.host}`;
-      const headers = {};
-      if (url.username || url.password) {
-        const creds = `${url.username || ''}:${url.password || ''}`;
-        headers['Authorization'] = 'Basic ' + btoa(creds);
-      }
-      return { base, headers };
+      return { base, headers: {} };
     }
 
     function textFromContent(content) {
@@ -1235,12 +1380,16 @@
       setLoading(true);
       showTyping();
 
+      // لا ترسل رسالة الترحيب الأولى للـ API حتى لا يردّ عليها كأنها رسالة المستخدم
+      const apiMessages = conv.messages.filter((m, idx) => !(idx === 0 && m.role === 'assistant' && m.content === GREETING));
+
       try {
         const cfg = apiConfig();
+        const charPayload = conv.character ? { name: conv.character.name, gender: conv.character.gender, personality: conv.character.personality } : undefined;
         const res = await fetch(`${cfg.base}/api/chat`, {
           method: 'POST',
           headers: {...cfg.headers, 'Content-Type':'application/json'},
-          body: JSON.stringify({user_id: userId, conversation_id: activeId, user_name: userName, messages: conv.messages})
+          body: JSON.stringify({user_id: userId, conversation_id: activeId, user_name: userName, messages: apiMessages, character: charPayload})
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.error) {
@@ -1288,12 +1437,31 @@
     historyBtn.addEventListener('click', () => toggleSidebar(true));
     overlay.addEventListener('click', () => toggleSidebar(false));
     menuBtn.addEventListener('click', createNewChat);
-    introVideo.addEventListener('ended', hideIntro);
+    introVideo.addEventListener('ended', onIntroEnd);
+    acceptDisclaimer.addEventListener('click', acceptDisclaimerHandler);
 
     // init
     loadConversations();
     renderSidebar();
     renderChat();
+
+    function showDisclaimer() {
+      disclaimer.classList.add('open');
+    }
+    function hideDisclaimer() {
+      disclaimer.classList.remove('open');
+    }
+    function acceptDisclaimerHandler() {
+      localStorage.setItem(DISCLAIMER_KEY, '1');
+      hideDisclaimer();
+      hideIntro();
+    }
+    function onIntroEnd() {
+      hideIntro();
+      if (!localStorage.getItem(DISCLAIMER_KEY)) {
+        showDisclaimer();
+      }
+    }
 
     function updateHeight() {
       const vv = window.visualViewport;
@@ -1311,6 +1479,48 @@
       window.visualViewport.addEventListener('scroll', keepTop);
     }
     updateHeight();
+
+    function openCharModal() {
+      charModal.classList.add('open');
+      charName.value = '';
+      charGender.value = 'male';
+      charPersonality.value = '';
+      charImage.value = '';
+      selectedCharImage = null;
+      charImagePreview.src = '';
+      charImagePreview.style.display = 'none';
+    }
+    function closeCharModal() {
+      charModal.classList.remove('open');
+    }
+    function startCharChatHandler() {
+      const name = charName.value.trim().replace(/['\"`]/g, '').slice(0, 32);
+      if (!name) { showToast('اكتب اسم الشخصية'); return; }
+      const gender = charGender.value;
+      const personality = charPersonality.value.replace(/['\"`]/g, '').slice(0, 160);
+      const image = selectedCharImage || null;
+      const character = { name, gender, image, personality };
+      createCustomConversation(character);
+      closeCharModal();
+      renderSidebar();
+      renderChat();
+      showToast('بدأت دردشة مخصصة');
+    }
+    function readCharImage(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        selectedCharImage = e.target.result;
+        charImagePreview.src = e.target.result;
+        charImagePreview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+    charImage.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) readCharImage(file);
+    });
+    startCharChat.addEventListener('click', startCharChatHandler);
+    cancelChar.addEventListener('click', closeCharModal);
 
     showIntro();
   </script>
