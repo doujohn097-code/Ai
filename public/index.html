@@ -712,8 +712,6 @@
         messages: [{role:'assistant', content: GREETING}],
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        askedName: false,
-        waitingName: false,
       };
       conversations.unshift(conv);
       activeId = id;
@@ -1214,40 +1212,15 @@
       renderSidebar();
     }
 
-    function askUserName(conv) {
-      if (userName || conv.askedName) return false;
-      conv.askedName = true;
-      conv.waitingName = true;
-      const q = 'شكون نتا؟ واش اسمك؟';
-      addAssistantToDOM(q);
-      addMessageToActive('assistant', q);
-      saveConversations();
-      return true;
-    }
-
     async function sendMessage(content) {
       const conv = activeConv();
       if (!conv) return;
 
-      if (conv.waitingName) {
-        const name = textFromContent(content).trim();
-        if (!name) return;
-        userName = name;
-        localStorage.setItem(USERNAME_KEY, name);
-        conv.userName = name;
-        conv.waitingName = false;
-        addUser(content);
-        addMessageToActive('user', content);
-        chatInput.value = '';
-        removeSelectedImage();
-        updateInputState();
-      } else {
-        addUser(content);
-        addMessageToActive('user', content);
-        chatInput.value = '';
-        removeSelectedImage();
-        updateInputState();
-      }
+      addUser(content);
+      addMessageToActive('user', content);
+      chatInput.value = '';
+      removeSelectedImage();
+      updateInputState();
 
       if (isCreatorQuestion(content)) {
         const reply = creatorResponse();
@@ -1255,7 +1228,6 @@
         await new Promise(r => setTimeout(r, 600));
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
-        if (askUserName(conv)) { setLoading(false); return; }
         setLoading(false);
         return;
       }
@@ -1277,7 +1249,6 @@
         const reply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'ما فهمتش، واش تقدر توضّحلي؟';
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
-        askUserName(conv);
       } catch (err) {
         addAssistantToDOM('سمحني، كاين بروبلام. عاود حاول مبعد.');
       } finally {
