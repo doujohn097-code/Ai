@@ -667,7 +667,7 @@
     const ACTIVE_KEY = 'derja_ai_active_id';
     const USER_KEY = 'derja_ai_user_id';
     const USERNAME_KEY = 'derja_ai_username';
-    const GREETING = 'مرحبا بيك! أنا Derja Ai، كيف نقدر نساعدك اليوم؟';
+    const GREETING = 'واه خويا! أنا Derja Ai، شنو نديرلك؟';
 
     let conversations = [];
     let activeId = null;
@@ -1218,7 +1218,7 @@
       if (userName || conv.askedName) return false;
       conv.askedName = true;
       conv.waitingName = true;
-      const q = 'شكون اسمك خويا؟';
+      const q = 'شكون نتا؟ واش اسمك؟';
       addAssistantToDOM(q);
       addMessageToActive('assistant', q);
       saveConversations();
