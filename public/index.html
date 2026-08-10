@@ -1326,6 +1326,7 @@
 
       // لا ترسل رسالة الترحيب الأولى للـ API حتى لا يردّ عليها كأنها رسالة المستخدم
       const apiMessages = conv.messages.filter((m, idx) => !(idx === 0 && m.role === 'assistant' && m.content === GREETING));
+      let responseData = {};
 
       try {
         const cfg = apiConfig();
@@ -1334,15 +1335,15 @@
           headers: {...cfg.headers, 'Content-Type':'application/json'},
           body: JSON.stringify({user_id: userId, conversation_id: activeId, user_name: userName, messages: apiMessages})
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.error) {
-          throw new Error('api failed');
+        responseData = await res.json().catch(() => ({}));
+        if (!res.ok || responseData.error) {
+          throw new Error(responseData.error || 'api failed');
         }
-        const reply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'ما فهمتش، واش تقدر توضّحلي؟';
+        const reply = responseData.choices?.[0]?.message?.content || responseData.content?.[0]?.text || 'ما فهمتش، واش تقدر توضّحلي؟';
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
       } catch (err) {
-        addAssistantToDOM('اسمحلي، كاين بروبلام. عاود حاول مبعد.');
+        addAssistantToDOM(err.message || 'اسمحلي، كاين بروبلام. عاود حاول مبعد.');
       } finally {
         removeTyping();
         setLoading(false);

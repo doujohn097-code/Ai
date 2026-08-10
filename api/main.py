@@ -14,7 +14,11 @@ def parse_credit_limit(text):
         return None
     m = re.search(r'can only afford (\d+)', text, re.IGNORECASE)
     if m:
-        return max(256, int(m.group(1)) - 50)
+        afford = int(m.group(1))
+        # ما نحاولش لو الرصيد المتبقي ما يكفيش جملة قصيرة
+        if afford < 20:
+            return None
+        return max(1, afford - 5)
     return None
 
 
@@ -76,17 +80,7 @@ def get_openrouter_keys():
 
 def get_provider_configs():
     configs = []
-    openrouter_keys = get_openrouter_keys()
-    for idx, key in enumerate(openrouter_keys, start=1):
-        configs.append({
-            "name": f"openrouter{idx}",
-            "api_key": key,
-            "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o"),
-            "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
-            "api_path": os.environ.get("OPENROUTER_API_PATH", "/chat/completions"),
-            "timeout": 60,
-            "max_tokens": int(os.environ.get("OPENROUTER_MAX_TOKENS", "2048")),
-        })
+    # Google هو الافتراضي إذا كان المفتاح موجودًا
     if os.environ.get("GOOGLE_API_KEY"):
         configs.append({
             "name": "google",
@@ -97,6 +91,29 @@ def get_provider_configs():
             "timeout": 60,
             "max_tokens": int(os.environ.get("GOOGLE_MAX_TOKENS", "4096")),
         })
+    openrouter_keys = get_openrouter_keys()
+    for idx, key in enumerate(openrouter_keys, start=1):
+        primary_model = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o")
+        fallback_model = "openai/gpt-4o-mini"
+        configs.append({
+            "name": f"openrouter{idx}",
+            "api_key": key,
+            "model": primary_model,
+            "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            "api_path": os.environ.get("OPENROUTER_API_PATH", "/chat/completions"),
+            "timeout": 60,
+            "max_tokens": int(os.environ.get("OPENROUTER_MAX_TOKENS", "2048")),
+        })
+        if primary_model != fallback_model:
+            configs.append({
+                "name": f"openrouter{idx}_fallback",
+                "api_key": key,
+                "model": fallback_model,
+                "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+                "api_path": os.environ.get("OPENROUTER_API_PATH", "/chat/completions"),
+                "timeout": 60,
+                "max_tokens": int(os.environ.get("OPENROUTER_MAX_TOKENS", "2048")),
+            })
     if os.environ.get("TOKENROUTER_API_KEY"):
         configs.append({
             "name": "tokenrouter",
@@ -457,7 +474,7 @@ class handler(BaseHTTPRequestHandler):
             }
             try:
                 with httpx.Client(follow_redirects=True, timeout=cfg.get("timeout", 60)) as client:
-                    for attempt in range(2):
+                    for attempt in range(3):
                         resp = client.post(
                             f"{cfg['base_url']}{cfg['api_path']}",
                             headers=headers,
@@ -466,9 +483,19 @@ class handler(BaseHTTPRequestHandler):
                         text = resp.text
                         content_type = resp.headers.get("content-type", "")
                         if resp.status_code == 200 and "json" in content_type.lower() and text.lstrip().startswith(("{", "[")):
-                            result = json.loads(text)
+                            parsed = json.loads(text)
+                            if extract_reply(parsed):
+                                result = parsed
+                                break
+                            errors.append("ردّ فارغ من المزود")
                             break
-                        if attempt == 0 and (resp.status_code == 402 or "credits" in (text or "").lower()):
+                        if "prompt tokens limit exceeded" in (text or "").lower():
+                            # web search يكلّف بزاف بالـ tokens؛ نحاول من غيرو
+                            if data.get("tools"):
+                                data.pop("tools", None)
+                                data["max_tokens"] = cfg.get("max_tokens", 2048)
+                                continue
+                        if resp.status_code == 402 or "credits" in (text or "").lower():
                             limit = parse_credit_limit(text)
                             if limit and limit < data["max_tokens"]:
                                 data["max_tokens"] = limit
