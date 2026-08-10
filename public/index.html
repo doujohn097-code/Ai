@@ -1258,6 +1258,27 @@
       return 'أنا Derja Ai، صاوني سالم أحمد! 🙌 والله راجل ماهر في البرمجة وذكي بزاف، وهو اللي خلاني نقدر نساعدك ونجاوبك بكل احترافية. تحيا سالم أحمد! 😎';
     }
 
+    function isTimeQuestion(content) {
+      const text = textFromContent(content).toLowerCase();
+      const keywords = [
+        'شحال الساعة', 'كم الساعة', 'الساعة', 'الوقت', 'التوقيت',
+        'شحال توقيت', 'شحال الوقت', 'نهار اليوم', 'تاريخ اليوم',
+        'اليوم شحال', 'شنو نهار', 'what time', 'what is the time',
+        'what date', 'today date', 'current time', 'current date'
+      ];
+      return keywords.some(k => text.includes(k.toLowerCase()));
+    }
+
+    function currentTimeReply(query) {
+      const q = textFromContent(query).toLowerCase();
+      const now = new Date();
+      const date = now.toLocaleDateString('ar-DZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const time = now.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
+      if (/(الساعة|الوقت|التوقيت|what time|current time)/.test(q)) return `الساعة الآن ${time}.`;
+      if (/(تاريخ|نهار|date|today)/.test(q)) return `اليوم ${date}.`;
+      return `اليوم ${date}، والساعة الآن ${time}.`;
+    }
+
     function addMessageToActive(role, content) {
       const conv = activeConv();
       if (!conv) return;
@@ -1290,6 +1311,16 @@
         return;
       }
 
+      if (isTimeQuestion(content)) {
+        const reply = currentTimeReply(content);
+        setLoading(true);
+        await new Promise(r => setTimeout(r, 500));
+        addAssistantToDOM(reply);
+        addMessageToActive('assistant', reply);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       showTyping();
 
@@ -1311,7 +1342,7 @@
         addAssistantToDOM(reply);
         addMessageToActive('assistant', reply);
       } catch (err) {
-        addAssistantToDOM('سمحني، كاين بروبلام. عاود حاول مبعد.');
+        addAssistantToDOM('اسمحلي، كاين بروبلام. عاود حاول مبعد.');
       } finally {
         removeTyping();
         setLoading(false);

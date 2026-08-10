@@ -59,6 +59,12 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 
+def web_search_supported(model):
+    # موديلات Gemini Flash المعروفة بمشاكل في web search الأصلي
+    broken = ("google/gemini-3.6-flash", "google/gemini-3.5-flash")
+    return not any(model.startswith(b) for b in broken)
+
+
 def get_openrouter_keys():
     keys = []
     for suffix in ("", "_2", "_3"):
@@ -434,7 +440,11 @@ class handler(BaseHTTPRequestHandler):
             data["model"] = cfg["model"]
             max_tokens = cfg.get("max_tokens", 2048)
             data["max_tokens"] = max_tokens
-            if "openrouter" in cfg.get("name", "") and os.environ.get("OPENROUTER_WEB_SEARCH", "true").lower() in ("1", "true", "yes"):
+            if (
+                "openrouter" in cfg.get("name", "")
+                and os.environ.get("OPENROUTER_WEB_SEARCH", "true").lower() in ("1", "true", "yes")
+                and web_search_supported(cfg.get("model", ""))
+            ):
                 data["tools"] = [{"type": "openrouter:web_search"}]
             else:
                 data.pop("tools", None)
